@@ -9,8 +9,9 @@ if TYPE_CHECKING:
 
 class FileBase(SQLModel):
     timestamp: datetime
-    version: int
+    version: int = Field(nullable=False)
     file: LargeBinary = Field(nullable=False)
+    deprecated: bool = Field(nullable=False)
 
 
 class File(FileBase, table=True):
