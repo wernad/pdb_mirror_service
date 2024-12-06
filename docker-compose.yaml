@@ -1,0 +1,45 @@
+name: pdb_mirror
+
+services:
+  pg_mirror:
+    image: postgres:14
+    container_name: pg_mirror
+    environment:
+      POSTGRES_NAME: mirror
+      POSTGRES_USER: mirror
+      POSTGRES_PASSWORD: admin
+      POSTGRES_PORT: 5432
+    ports:
+      - "5435:5432"
+    networks:
+      pdb_mirror_net:
+        ipv4_address: 172.20.0.3
+
+  be_mirror:
+    build: ../backend
+    container_name: be_mirror
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --root-path /app --proxy-headers --workers 8
+    environment:
+      CHANNELS_DB_NAME: mirror
+      CHANNELS_DB_USER: mirror
+      CHANNELS_DB_PASS: admin
+      CHANNELS_DB_HOST: 172.20.0.3
+      CHANNELS_DB_PORT: 5432
+    volumes:
+      - .:/opt/
+      - ${MIRROR_DATA:-/data}:/data:ro
+    logging:
+      driver: journald
+      options:
+        tag: pdb_mirror
+    networks:
+      pdb_mirror_net:
+        ipv4_address: 172.20.0.2
+
+networks:
+  pdb_mirror_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/29 # 5 hosts + gateway
+          gateway: 172.20.0.1
