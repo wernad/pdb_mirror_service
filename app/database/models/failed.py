@@ -15,6 +15,6 @@ class FailedFetchBase(SQLModel):
 
 class FailedFetch(FailedFetchBase, table=True):
     id: int = Field(primary_key=True)
-    protein_id: str = Field(foreign_key="protein.name")
+    protein_id: str = Field(foreign_key="protein.id")
 
-    protein: "Protein" = Relationship(back_populates="protein.failed")
+    protein: "Protein" = Relationship(back_populates="failed")

@@ -7,7 +7,7 @@ if TYPE_CHECKING:
 
 
 class ProteinBase(SQLModel):
-    proteid_id: str = Field(primary_key=True)
+    id: str = Field(primary_key=True)
 
 
 class Protein(ProteinBase, table=True):
