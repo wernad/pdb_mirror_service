@@ -9,7 +9,6 @@ router = APIRouter()
 router.include_router(api_router, prefix=API_PATH)
 
 app = FastAPI(
-    router=router.routes,
     title="PDB Mirror 0.1 API",
     contact={"name": "Ján Kučera"},
     redoc_url=None,
@@ -17,6 +16,8 @@ app = FastAPI(
     version="beta",
     swagger_ui_parameters={"syntaxHighlight": False, "defaultModelsExpandDepth": -1},
 )
+
+app.include_router(router)
 
 
 @app.on_event("startup")
