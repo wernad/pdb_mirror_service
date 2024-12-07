@@ -1,0 +1,7 @@
+fastapi==0.115.6
+psycopg2==2.9.10
+pydantic_core==2.27.1
+sqlmodel==0.0.22
+requests==2.31.0
+httpx==0.24.1
+uvicorn==0.23.2
