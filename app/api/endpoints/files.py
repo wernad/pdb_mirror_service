@@ -25,11 +25,12 @@ async def get_latest_cif(file_service: FileServiceDep, protein_id: str):
 
 
 @router.get(
-    "/{protein_id}/{version}",
+    "/{protein_id}/version/{version}",
     name="CIF at version",
     description="Returns specific version of CIF file for given protein, if version and protein exist.",
 )
 async def get_cif_at_version(file_service: FileServiceDep, protein_id: str, version: int):
+    print("###")
     file = file_service.get_by_version_and_protein_id(protein_id=protein_id, version=version)
 
     if not file:
@@ -41,12 +42,13 @@ async def get_cif_at_version(file_service: FileServiceDep, protein_id: str, vers
 
 
 @router.get(
-    "/{protein_id}/{date}",
+    "/{protein_id}/date/{date}",
     name="Latest CIF prior to date",
     description="Returns latest of CIF file for given protein before given date.",
 )
 async def get_latest_cif_prior(file_service: FileServiceDep, protein_id: str, date: datetime):
-    file = file_service.get_by_version_and_protein_id(protein_id=protein_id, version=date)
+    print("@@@")
+    file = file_service.get_latest_by_id_before_date(protein_id=protein_id, date=date)
 
     if not file:
         raise FileNotFound(protein_id=protein_id)

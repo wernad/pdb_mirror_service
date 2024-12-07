@@ -33,10 +33,10 @@ class FileService:
 
         return None
 
-    def get_latest_by_id_before_date(self, protein_id: str, before_date: datetime) -> bytes | None:
+    def get_latest_by_id_before_date(self, protein_id: str, date: datetime) -> bytes | None:
         """Fetches latest protein entry prior to specified date."""
 
-        data: File = self.repository.get_latest_by_id_before_date(protein_id, before_date)
+        data: File = self.repository.get_latest_by_id_before_date(protein_id, date)
 
         if data:
             binary_file = data.file
