@@ -7,12 +7,16 @@ from apscheduler.triggers.cron import CronTrigger
 from apscheduler.events import EVENT_JOB_ERROR, EVENT_JOB_EXECUTED, EVENT_JOB_MISSED, SchedulerEvent
 
 
-from app.config import PDB_URL, FETCH_JOB_DAY
+from app.config import FETCH_JOB_DAY, PDB_FTP_URL, PDB_VIEW_URL
+
+
+def get_modified():
+    """Fetches current state of modified entries and finds the ones that are less than a week old."""
 
 
 def fetch_new_data():
     """Fetch job for downloading all new cif files from PDB."""
-    log.info(f"@@@@ TASK DONE {PDB_URL}")
+    log.info(f"@@@@ TASK DONE {PDB_FTP_URL}")
 
 
 def event_listener(event: SchedulerEvent):
