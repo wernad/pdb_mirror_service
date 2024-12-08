@@ -11,7 +11,6 @@ class FileBase(SQLModel):
     timestamp: datetime
     version: int = Field(nullable=False)
     file: bytes = Field(nullable=False)
-    deprecated: bool = Field(nullable=False)
 
 
 class File(FileBase, table=True):

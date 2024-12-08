@@ -8,6 +8,7 @@ if TYPE_CHECKING:
 
 class ProteinBase(SQLModel):
     id: str = Field(primary_key=True)
+    deprecated: bool = Field(nullable=False, default=False)
 
 
 class Protein(ProteinBase, table=True):

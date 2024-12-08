@@ -1,6 +1,7 @@
 from datetime import datetime
 from sqlmodel import select
 
+from app.log import logger as log
 from app.database.repositories.base import RepositoryBase
 from app.database.models import File
 
@@ -9,7 +10,7 @@ class FileRepository(RepositoryBase):
     """Repository for DB operations related to files."""
 
     def get_latest_by_protein_id(self, protein_id: str) -> File:
-        statement = select(File).where(File.protein_id == protein_id)
+        statement = select(File).where(protein_id == protein_id).order_by(File.version.desc()).limit(1)
         file = self.db.exec(statement).first()
 
         return file
@@ -25,3 +26,27 @@ class FileRepository(RepositoryBase):
         file = self.db.exec(statement).first()
 
         return file
+
+    def get_latest_version_by_protein_id(self, protein_id: str) -> int:
+        protein = self.get_latest_by_protein_id(protein_id=protein_id)
+
+        if protein:
+            return protein.version
+
+        return 0
+
+    def insert_new_version(self, protein_id: str, file: bytes):
+        """Inserts new file version of given protein id."""
+        version = self.get_latest_version_by_protein_id(protein_id=protein_id) + 1
+
+        new_file = File(timestamp=datetime.now(), version=version, file=file, protein_id=protein_id)
+        try:
+            self.db.add(new_file)
+            self.db.commit()
+            self.db.refresh(new_file)
+            log.debug(f"Inserted file version {version} for protein {protein_id}")
+            return True
+        except Exception as e:
+            log.error(f"Failed to insert new file. Error {str(e)}")
+            self.db.rollback()
+            return False
