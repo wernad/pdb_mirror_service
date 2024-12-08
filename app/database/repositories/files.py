@@ -10,7 +10,7 @@ class FileRepository(RepositoryBase):
     """Repository for DB operations related to files."""
 
     def get_latest_by_protein_id(self, protein_id: str) -> File:
-        statement = select(File).where(protein_id == protein_id).order_by(File.version.desc()).limit(1)
+        statement = select(File).where(File.protein_id == protein_id).order_by(File.version.desc()).limit(1)
         file = self.db.exec(statement).first()
 
         return file
@@ -27,11 +27,12 @@ class FileRepository(RepositoryBase):
 
         return file
 
+    # TODO fix version handling as now it doesnt return correct value.
     def get_latest_version_by_protein_id(self, protein_id: str) -> int:
-        protein = self.get_latest_by_protein_id(protein_id=protein_id)
+        file = self.get_latest_by_protein_id(protein_id=protein_id)
 
-        if protein:
-            return protein.version
+        if file:
+            return file.version
 
         return 0
 
