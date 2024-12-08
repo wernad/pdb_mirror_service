@@ -4,7 +4,9 @@ ARG APP_NAME=pdb_mirror
 
 # Update and add basic packages
 RUN apk update && apk add --no-cache build-base libpq-dev gcc musl-dev bash
- 
+
+ENV TZ=Europe/Prague
+
 # Working directory
 RUN mkdir -p /opt/${APP_NAME}
 WORKDIR /opt/${APP_NAME}

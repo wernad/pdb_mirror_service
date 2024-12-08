@@ -5,41 +5,52 @@ services:
     image: postgres:14
     container_name: pg_mirror
     environment:
-      POSTGRES_NAME: mirror
-      POSTGRES_USER: mirror
+      POSTGRES_DB: pdb_mirror
+      POSTGRES_USER: admin
       POSTGRES_PASSWORD: admin
       POSTGRES_PORT: 5432
     ports:
       - "5435:5432"
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "admin", "-d", "pdb_mirror"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     networks:
       pdb_mirror_net:
-        ipv4_address: 172.20.0.3
+        ipv4_address: 172.21.0.3
 
   be_mirror:
-    build: ../backend
+    build: .
     container_name: be_mirror
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --root-path /app --proxy-headers --workers 8
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --root-path /app --proxy-headers --workers 8 --reload
     environment:
-      CHANNELS_DB_NAME: mirror
-      CHANNELS_DB_USER: mirror
-      CHANNELS_DB_PASS: admin
-      CHANNELS_DB_HOST: 172.20.0.3
-      CHANNELS_DB_PORT: 5432
+      MIRROR_DB_NAME: pdb_mirror
+      MIRROR_DB_USER: admin
+      MIRROR_DB_PASS: admin
+      MIRROR_DB_HOST: 172.21.0.3
+      MIRROR_DB_PORT: 5432
     volumes:
-      - .:/opt/
-      - ${MIRROR_DATA:-/data}:/data:ro
+      - .:/opt/pdb_mirror
+      # - ${MIRROR_DATA:-/data}:/data:ro
+    ports:
+      - "8000:8000"
     logging:
       driver: journald
       options:
         tag: pdb_mirror
     networks:
       pdb_mirror_net:
-        ipv4_address: 172.20.0.2
+        ipv4_address: 172.21.0.2
+    depends_on:
+      pg_mirror:
+        condition: service_healthy
+        restart: true
 
 networks:
   pdb_mirror_net:
     driver: bridge
     ipam:
       config:
-        - subnet: 172.20.0.0/29 # 5 hosts + gateway
-          gateway: 172.20.0.1
+        - subnet: 172.21.0.0/29 # 5 hosts + gateway
+          gateway: 172.21.0.1
