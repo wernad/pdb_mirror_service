@@ -1,7 +1,9 @@
+APScheduler==3.11.0
 fastapi==0.115.6
 psycopg2==2.9.10
 pydantic_core==2.27.1
+Requests==2.32.3
 sqlmodel==0.0.22
-requests==2.31.0
-httpx==0.24.1
+starlette==0.41.3
 uvicorn==0.23.2
+pipreqs==0.4.13
