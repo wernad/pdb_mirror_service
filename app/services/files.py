@@ -47,6 +47,20 @@ class FileService:
 
         return None
 
+    def get_new_files_after_date(self, date: datetime) -> list[bytes] | None:
+        """Fetches newest proteins in a list after given date."""
+
+        data: list[str] = self.file_repository.get_new_files_after_date(date)
+
+        if data:
+            output = []
+            for entry in data:
+                binary_file = entry.file
+                output.append(bytes(binary_file))
+            return output
+
+        return None
+
     def insert_new_version(self, protein_id: str, file: bytes):
         """Inserts a new version of given protein. If protein doesn't have an entry, create it."""
         protein = self.protein_repository.get_protein_by_id(protein_id=protein_id)

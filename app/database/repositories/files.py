@@ -36,6 +36,13 @@ class FileRepository(RepositoryBase):
 
         return 0
 
+    def get_new_files_after_date(self, date: datetime) -> list[File]:
+        statement = select(File).where(File.timestamp > date)
+
+        files = self.db.exec(statement).all()
+
+        return files
+
     def insert_new_version(self, protein_id: str, file: bytes):
         """Inserts new file version of given protein id."""
         version = self.get_latest_version_by_protein_id(protein_id=protein_id) + 1
