@@ -47,29 +47,31 @@ def run_rsync():
     return output
 
 
-# TODO rewrite to use RSYNC in subprocess (FTP was deprecated).
+def get_removed():
+    """Finds all removed entries from last week via Search API."""
+    ...
+
+
+def get_entries():
+    """Finds all new entries from last week via Search API."""
+    ...
+
+
+def get_ids_with_pagination(url: str, start: int = 0, limit: int = 100):
+    """Fetches ids of data entries with paginated result."""
+    ...
+
+
+def get_files_from_ids(file_names: list[str]):
+    """Fetches CIF files from file server."""
+    ...
+
+
+# TODO rewrite to use Search API.
+# removed rcsb_accession_info.deposit_date
+# modified rcsb_accession_info.revision_date
 @router.get("/")
 async def get_files(file_service: FileServiceDep, failed_fetch_service: FailedFetchServiceDep):
-    entries, removed = run_rsync()
-    entries = entries[2:]
-    # if "230" in ftp.login():
-    #     log.debug("Logged to FTP.")
-    #     parent_dirs = check_last_modified(ftp, entries_path)
-    #     print(parent_dirs)
-    #     return None
-    #     files_to_fetch = []
-    #     n = 1
-    #     for parent_dir in parent_dirs:
-    #         path = f"{entries_path}/{parent_dir}"
-    #         file_dirs = check_last_modified(ftp, path)
-    #         print(file_dirs)
-    #         files_to_fetch.extend([(parent_dir, file_name) for file_name in file_dirs])
-    #         if n > 3:
-    #             break
-
-    #         n += 1
-    #     print(files_to_fetch)
-
     #     for parent_dir, file_dir in files_to_fetch:
     #         file_name = f"{file_dir}_xyz.cif.gz"
     #         fetch_url = f"{PDB_HTTP_VIEW_URL}{parent_dir}/{file_dir}/{file_name}"
