@@ -35,6 +35,11 @@ services:
       # - ${MIRROR_DATA:-/data}:/data:ro
     ports:
       - "8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "localhost:8000/files/ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     logging:
       driver: journald
       options:
