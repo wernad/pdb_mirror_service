@@ -43,11 +43,11 @@ class FileRepository(RepositoryBase):
 
         return files
 
-    def insert_new_version(self, protein_id: str, file: bytes):
+    def insert_new_version(self, protein_id: str, version: int, file: bytes):
         """Inserts new file version of given protein id."""
-        version = self.get_latest_version_by_protein_id(protein_id=protein_id) + 1
 
         new_file = File(timestamp=datetime.now(), version=version, file=file, protein_id=protein_id)
+
         try:
             self.db.add(new_file)
             self.db.commit()

@@ -11,9 +11,9 @@ class FailedFetchRepository(RepositoryBase):
 
     def get_all_failed_fetches(self) -> list[FailedFetch]:
         statement = select(FailedFetch)
-        file = self.db.exec(statement).all()
+        files = self.db.exec(statement).all()
 
-        return file
+        return files
 
     def insert_new_failed_fetch(self, protein_id: str, version: int, error: str):
         """Inserts new file version of given protein id."""

@@ -21,8 +21,21 @@ class ProteinRepository(RepositoryBase):
             self.db.commit()
             self.db.refresh(new_protein)
             log.debug(f"Inserted new protein entry {protein_id}")
-            return True
         except Exception as e:
             self.db.rollback()
             log.error(f"Failed to insert new protein entry. Error: {str(e)}")
-            return False
+
+    def update_depricated(self, protein_id: str, status: bool):
+        protein = self.get_protein_by_id(protein_id)
+
+        if protein:
+            try:
+                protein.deprecated = status
+                self.db.commit()
+                self.db.refresh(protein)
+                log.debug(f"Inserted new protein entry {protein_id}")
+            except Exception as e:
+                self.db.rollback()
+                log.error(f"Failed to update status of protein {protein_id}. Error: {str(e)}")
+        else:
+            log.error(f"Protein with id {protein_id} not found.")
