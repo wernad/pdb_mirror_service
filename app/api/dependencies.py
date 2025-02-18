@@ -6,6 +6,7 @@ from sqlmodel import Session
 from app.database.database import engine
 from app.services import FileService, FailedFetchService
 from app.api.exceptions import UnsupportedIDFormat
+from app.services.protein import ProteinService
 
 __all__ = ["FileServiceDep", "FailedFetchServiceDep", "IDCheckDep"]
 
@@ -20,6 +21,17 @@ def get_session() -> Generator[Session, None, None]:
 
 SessionDep = Annotated[Session, Depends(get_session)]
 
+
+# Protein
+
+
+def get_protein_service(db: SessionDep) -> Generator[ProteinService, None, None]:
+    yield ProteinService(db)
+
+
+ProteinServiceDep = Annotated[ProteinService, Depends(get_protein_service)]
+
+
 # File
 
 
@@ -28,6 +40,7 @@ def get_file_service(db: SessionDep) -> Generator[FileService, None, None]:
 
 
 FileServiceDep = Annotated[FileService, Depends(get_file_service)]
+
 
 # Failed fetch
 

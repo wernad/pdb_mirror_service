@@ -24,3 +24,15 @@ class NoFilesAfterDate(HTTPException):
     def __init__(self, date: datetime):
         self.status_code = 404
         self.detail = f"No new files after given date {str(date)}."
+
+
+class UnexpectedSearchError(HTTPException):
+    def __init__(self, code: int, error: str):
+        self.status_code = code
+        self.detail = f"Search API returned unexpected error: {error}"
+
+
+class UnexpectedDataError(HTTPException):
+    def __init__(self, code: int, error: str):
+        self.status_code = code
+        self.detail = f"Data API returned unexpected error: {error}"
