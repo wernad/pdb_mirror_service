@@ -87,18 +87,18 @@ def get_last_version(id: str) -> int | None:
     return None
 
 
-def get_list_file(from_date: str, file_name: str) -> list[str] | None:
+def get_list_file(from_date: str, file_name: str) -> list[str]:
     """Fetches file with new, updated or removed entries."""
     log.debug(f"Fetching file with '{file_name}' entries.")
     url = f"{PDB_FTP_STATUS_URL}{from_date}/{file_name}.pdb"
-
     response = get(url)
+
     if response.status_code == 200:
         log.debug("File sucessfully fetched.")
         return list(response.text.split())
 
-    log.error(f"No '{file_name}' file received.")
-    return None
+    log.error(f"No file found for '{file_name}' entries.")
+    return []
 
 
 def process_added(file_service: FileServiceDep, date_from: str) -> None:
@@ -185,13 +185,14 @@ def process_latest_changes(
 ):
     """Downloads files with list of new/modified/removed entries and processes them accordingly."""
     failed = []
-    failed.append(process_added(file_service, date_from))
-    failed.append(process_modified(file_service, date_from))
-    failed.append(process_obsolete(protein_service, date_from))
+    failed.extend(process_added(file_service, date_from))
+    failed.extend(process_modified(file_service, date_from))
+    failed.extend(process_obsolete(protein_service, date_from))
 
     log.debug(f"Processing ended, updating failed entries with {len(failed)} new rows.")
 
-    process_failed(failed, failed_fetch_service)
+    if failed:
+        process_failed(failed, failed_fetch_service)
 
 
 @router.get("/ping")
