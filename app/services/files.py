@@ -25,6 +25,15 @@ class FileService:
 
         return None
 
+    def get_latest_version_by_protein_id(self, protein_id: str) -> int:
+        """Fetches latest version number of given file."""
+        data: File = self.file_repository.get_latest_version_by_protein_id(protein_id)
+
+        if data:
+            return data.version
+
+        return None
+
     def get_by_version_and_protein_id(self, protein_id: str, version: int) -> bytes | None:
         """Fetches specific version of a protein entry."""
 
@@ -61,7 +70,7 @@ class FileService:
 
         return None
 
-    def insert_new_version(self, protein_id: str, file: bytes):
+    def insert_new_version(self, protein_id: str, file: bytes, version: int):
         """Inserts a new version of given protein. If protein doesn't have an entry, create it."""
         protein = self.protein_repository.get_protein_by_id(protein_id=protein_id)
 
@@ -69,5 +78,5 @@ class FileService:
             log.debug(f"Protein {protein_id} not found, inserting new protein entry.")
             self.protein_repository.insert_protein(protein_id=protein_id)
 
-        result = self.file_repository.insert_new_version(protein_id=protein_id, file=file)
+        result = self.file_repository.insert_new_version(protein_id=protein_id, file=file, version=version)
         return result
