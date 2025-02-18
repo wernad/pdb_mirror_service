@@ -1,4 +1,3 @@
-from app.log import logger as log
 from zoneinfo import ZoneInfo
 from requests import get
 
@@ -6,8 +5,8 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.events import EVENT_JOB_ERROR, EVENT_JOB_EXECUTED, EVENT_JOB_MISSED, SchedulerEvent
 
-
-from app.config import CRON_JOB_DAY, PDB_RSYNC_URL, PDB_HTTP_VIEW_URL
+from app.log import logger as log
+from app.config import CRON_JOB_DAY, PDB_HTTP_FILE_URL
 
 
 def info_from_path(path: str):
@@ -22,7 +21,7 @@ def get_modified():
 # TODO
 def fetch_new_data():
     """Fetch job for downloading all new cif files from PDB."""
-    log.info(f"@@@@ TASK DONE {PDB_RSYNC_URL}")
+    log.info(f"@@@@ TASK DONE {PDB_HTTP_FILE_URL}")
 
 
 def event_listener(event: SchedulerEvent):
@@ -40,8 +39,8 @@ def get_scheduler():
     scheduler = BackgroundScheduler()
 
     CET = ZoneInfo("Europe/Prague")
-    trigger = CronTrigger(day_of_week=CRON_JOB_DAY, hour=0, minute=0, timezone=CET)
-
+    # trigger = CronTrigger(day_of_week=CRON_JOB_DAY, hour=0, minute=0, timezone=CET)
+    trigger = CronTrigger(hour="*", minute="*")
     scheduler.add_job(func=fetch_new_data, trigger=trigger, replace_existing=True, id="fetch_pdb_job", coalesce=True)
     scheduler.add_listener(event_listener, EVENT_JOB_EXECUTED | EVENT_JOB_MISSED | EVENT_JOB_ERROR)
 
