@@ -3,7 +3,7 @@ from typing import Annotated
 
 from fastapi import Depends
 from sqlmodel import Session
-from app.database.database import engine
+from app.database.database import get_session
 from app.services import FileService, FailedFetchService
 from app.api.exceptions import UnsupportedIDFormat
 from app.services.protein import ProteinService
@@ -12,11 +12,6 @@ __all__ = ["FileServiceDep", "FailedFetchServiceDep", "IDCheckDep"]
 
 
 # Session
-
-
-def get_session() -> Generator[Session, None, None]:
-    with Session(engine) as session:
-        yield session
 
 
 SessionDep = Annotated[Session, Depends(get_session)]
