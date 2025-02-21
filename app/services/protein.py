@@ -13,4 +13,8 @@ class ProteinService:
     def deprecate_protein(self, protein_id: str):
         """Deprecated given protein entry."""
 
-        self.protein_repository.update_depricated(protein_id=protein_id, status=False)
+        result = self.protein_repository.update_depricated(protein_id=protein_id, status=True)
+
+        if not result:
+            log.debug(f"Protein {protein_id} not found, inserting new protein entry.")
+            self.protein_repository.insert_protein(protein_id=protein_id, deprecated=True)
