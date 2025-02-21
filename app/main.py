@@ -8,7 +8,7 @@ from app.config import API_PATH
 from app.api.main import api_router
 from app.database.database import create_db_and_tables
 from psycopg2 import OperationalError
-from app.scheduler import get_scheduler
+from app.fetch.scheduler import get_scheduler
 
 router = APIRouter()
 router.include_router(api_router, prefix=API_PATH)
