@@ -14,8 +14,8 @@ class ProteinRepository(RepositoryBase):
 
         return protein
 
-    def insert_protein(self, protein_id: str) -> str:
-        new_protein = Protein(id=protein_id)
+    def insert_protein(self, protein_id: str, deprecated: bool = False) -> str:
+        new_protein = Protein(id=protein_id, deprecated=deprecated)
         try:
             self.db.add(new_protein)
             self.db.commit()
@@ -34,8 +34,10 @@ class ProteinRepository(RepositoryBase):
                 self.db.commit()
                 self.db.refresh(protein)
                 log.debug(f"Inserted new protein entry {protein_id}")
+                return True
             except Exception as e:
                 self.db.rollback()
                 log.error(f"Failed to update status of protein {protein_id}. Error: {str(e)}")
         else:
             log.error(f"Protein with id {protein_id} not found.")
+            return False
