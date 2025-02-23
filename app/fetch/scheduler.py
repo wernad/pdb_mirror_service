@@ -1,6 +1,5 @@
 from zoneinfo import ZoneInfo
-from requests import get, Response
-from urllib.parse import quote_plus
+from requests import get
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -11,53 +10,10 @@ from app.log import logger as log
 from app.services import ProteinService, FileService, FailedFetchService
 from app.config import (
     CRON_JOB_DAY,
-    PDB_DATA_API_URL,
-    PDB_HTTP_FILE_URL,
     PDB_FTP_STATUS_URL,
 )
 from app.database.database import get_session
-
-
-def get_error_message(response: Response) -> str:
-    """Extracts error message if any given, otherwise returns plain text."""
-    log.debug("Extractng error message.")
-    try:
-        message = response.json()
-    except Exception as _:
-        message = response.text
-
-    return message
-
-
-def get_graphql_query(id: str) -> str:
-    """Helper method to create url encoded string for Data API."""
-    log.debug(f"Generating GraphQL query string for id {id}")
-
-    query = f'{{entry(entry_id: "{id}"){{ pdbx_audit_revision_history {{major_revision}}}}}}'
-    encoded = quote_plus(query)
-
-    log.debug(f"Query string created. {encoded}")
-    return encoded
-
-
-def get_last_version(id: str) -> int | None:
-    """Fetches latest version number of given file ID."""
-    log.debug(f"Fetching latest version of a file with ID {id}.")
-
-    query = get_graphql_query(id)
-
-    url = f"{PDB_DATA_API_URL}?query={query}"
-    response = get(url)
-
-    if response.status_code == 200:
-        body = response.json()
-        version = body["data"]["entry"]["pdbx_audit_revision_history"][-1]["major_revision"]
-        log.debug(f"File {id} - latest version: {version}.")
-        return version
-
-    message = get_error_message(response)
-    log.debug(f"No version retrieved for id {id} - error: {message}")
-    return None
+from app.fetch.common import fetch_file_at_version, get_last_version, get_full_id
 
 
 def get_list_file(from_date: str, file_name: str) -> list[str]:
@@ -98,21 +54,18 @@ def process_valid(new: bool):
         failed = []
 
         for id in added:
-            full_id = f"pdb_0000{id}"
-            category = id[1:3]
+            full_id = get_full_id(id)
             version = 1 if new else get_last_version(id=id)
-            file_name = f"{full_id}_xyz_v{version}.cif.gz"
-            url = f"{PDB_HTTP_FILE_URL}/{category}/{full_id}/{file_name}"
-            response = get(url)
 
-            if response.status_code == 200:
-                body = response.content
-                result = file_service.insert_new_version(protein_id=full_id, file=body, version=version)
+            file, error = fetch_file_at_version(full_id, version)
 
+            if error:
+                failed.append((full_id, f"Received error code {error} during file fetch"))
+            else:
+                result = file_service.insert_new_version(protein_id=full_id, file=file, version=version)
                 if not result:
                     failed.append((full_id, f"Failure during insertion of new version. {result}"))
-            else:
-                failed.append((full_id, f"Received error code {response.status_code} during file fetch"))
+
         if added:
             log.debug(f"Finished processing new entries with {len(failed)} failures.")
 
