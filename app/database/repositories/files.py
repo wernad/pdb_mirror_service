@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlmodel import select
+from sqlmodel import insert, select
 
 from app.log import logger as log
 from app.database.repositories.base import RepositoryBase
@@ -58,3 +58,10 @@ class FileRepository(RepositoryBase):
             log.error(f"Failed to insert new file. Error {str(e)}")
             self.db.rollback()
             return False
+
+    def insert_in_bulk(self, values: list):
+        """Inserts new file rows in bulk."""
+
+        self.db.exec(insert(File), values)
+        self.db.commit()
+        self.db.refresh()

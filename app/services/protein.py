@@ -18,3 +18,12 @@ class ProteinService:
         if not result:
             log.debug(f"Protein {protein_id} not found, inserting new protein entry.")
             self.protein_repository.insert_protein(protein_id=protein_id, deprecated=True)
+
+    def bulk_insert_new_proteins(self, ids: list[tuple]):
+        """Inserts new file entries in bulk."""
+        values = []
+
+        for id in ids:
+            values.append({"protein_id": id, "deprecated": False})
+
+        self.protein_repository.insert_in_bulk(values)

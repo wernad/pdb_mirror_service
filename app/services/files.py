@@ -1,7 +1,8 @@
 from datetime import datetime
-from sqlmodel import Session
-from app.database.repositories import FileRepository, ProteinRepository
+from sqlmodel import Session, insert
+from datetime import datetime as dt
 
+from app.database.repositories import FileRepository, ProteinRepository
 from app.database.models import File
 from app.log import logger as log
 
@@ -80,3 +81,14 @@ class FileService:
 
         result = self.file_repository.insert_new_version(protein_id=protein_id, file=file, version=version)
         return result
+
+    def bulk_insert_new_files(self, entries: list[tuple]):
+        """Inserts new file entries in bulk."""
+        values = []
+
+        for entry in entries:
+            protein_id, version, file = entry
+            timestamp = dt.today()
+            values.append({"protein_id": protein_id, "version": version, "file": file, "timestamp": timestamp})
+
+        self.file_repository.insert_in_bulk(values)

@@ -1,4 +1,4 @@
-from sqlmodel import select
+from sqlmodel import insert, select
 
 from app.log import logger as log
 from app.database.repositories.base import RepositoryBase
@@ -41,3 +41,10 @@ class ProteinRepository(RepositoryBase):
         else:
             log.error(f"Protein with id {protein_id} not found.")
             return False
+
+    def insert_in_bulk(self, values: list):
+        """Inserts new protein rows in bulk."""
+
+        self.db.exec(insert(Protein), values)
+        self.db.commit()
+        self.db.refresh()
