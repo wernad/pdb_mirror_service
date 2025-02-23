@@ -6,16 +6,16 @@ DB_PASSWORD = "admin"
 
 
 PDB_SEARCH_API_URL = "https://search.rcsb.org/rcsbsearch/v2/query"
-PDB_SEARCH_API_LIMIT = 1000
+PDB_SEARCH_API_LIMIT = 50
 
 PDB_DATA_API_URL = "https://data.rcsb.org/graphql"
 
 PDB_FTP_STATUS_URL = "https://files.rcsb.org/pub/pdb/data/status/"
 
-PDB_HTTP_FILE_AGE = 10  # In days.
 PDB_HTTP_TIMEOUT = 5  # Seconds.
 PDB_HTTP_FILE_URL = "https://files-versioned.wwpdb.org/pdb_versioned/views/all/coordinates/mmcif/"
 
+WORKER_LIMIT = 5
 CRON_JOB_DAY = 3  # 0-6 (Mon - Sun).
-
+BYTE_LIMIT = 10000000  # 10 MB
 API_PATH = "/api/v1"
