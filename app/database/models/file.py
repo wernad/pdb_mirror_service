@@ -13,8 +13,10 @@ class FileBase(SQLModel):
     file: bytes = Field(nullable=False)
 
 
-class File(FileBase, table=True):
-    id: int = Field(primary_key=True)
+class InsertFile(FileBase):
     protein_id: str = Field(foreign_key="protein.id")
 
+
+class File(InsertFile, table=True):
+    id: int = Field(primary_key=True)
     protein: "Protein" = Relationship(back_populates="files")
