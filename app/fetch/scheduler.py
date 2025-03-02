@@ -44,6 +44,7 @@ def get_last_date():
     return last_date
 
 
+# TODO rewrite to use futures and bulk.
 def process_valid(new: bool):
     """Processes added or updated entries based on flag."""
     log.debug(f"Processing {'new' if new else 'modified'} entries.")
@@ -92,13 +93,17 @@ def process_obsolete() -> None:
     last_date = get_last_date()
     with get_session() as session:
         protein_service = ProteinService(session)
+        file_service = FileService(session)
         obsolete = get_list_file(last_date, "obsolete")
         failed = []
         for id in obsolete:
             result = protein_service.deprecate_protein(protein_id=id)
             if not result:
+                file_service.insert_obsolete_version(protein_id=id)
+            else:
                 full_id = f"pdb_0000{id}"
                 failed.append((full_id, f"Failure during insertion of new version. {result}"))
+
         if obsolete:
             log.debug(f"Finished processing obsolete entries with {len(failed)} failures.")
 

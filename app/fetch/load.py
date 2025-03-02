@@ -1,12 +1,15 @@
 from requests import get
+import concurrent.futures as cf
 import multiprocessing as mp
 from math import ceil
+from datetime import datetime as dt
 
 from app.log import logger as log
-from app.config import WORKER_LIMIT, PDB_SEARCH_API_LIMIT, BYTE_LIMIT
-from app.fetch.common import get_all_versions, get_search_url, fetch_file_at_version
+from app.config import WORKER_LIMIT, PDB_SEARCH_API_LIMIT
+from app.fetch.common import get_all_versions, get_search_url, get_graphql_query, get_file_url, get_files, get_full_id
 from app.services import ProteinService, FileService
 from app.database.database import get_session
+from app.database.models.file import InsertFile
 
 
 def fetch_ids(start: int, limit: int) -> list[str]:
@@ -27,20 +30,21 @@ def fetch_ids(start: int, limit: int) -> list[str]:
         return response.json()
 
 
-def insert_files(files: list[tuple]) -> None:
+def insert_files(files: list[InsertFile]) -> None:
     """Inserts multiple new file entries at once."""
 
-    ids = [x[0] for x in files]
     with get_session() as session:
         protein_service = ProteinService(session)
         file_service = FileService(session)
 
+        ids = [file.protein_id for file in files]
         protein_service.bulk_insert_new_proteins(ids=ids)
 
         file_service.bulk_insert_new_files(files)
 
 
-def task(worker_id: int, from_: int, chunk_size: int) -> None:
+# TODO fix too many requests error, possibly remove multiprocessing.
+def task(worker_id: int, start: int, end: int) -> None:
     """Main function of a worker process.
 
     Fetches IDs, versions and files. Inserts fetched data into database.
@@ -51,9 +55,10 @@ def task(worker_id: int, from_: int, chunk_size: int) -> None:
     Returns:
         None
     """
-    log.debug(f"Starting worker {worker_id} with params: {from_=}, {chunk_size=}")
+    log.debug(f"Starting worker {worker_id} with params: {start=}, {end=}")
 
-    starts = [x for x in range(from_, from_ + chunk_size, PDB_SEARCH_API_LIMIT)]
+    starts = [x for x in range(start, end, PDB_SEARCH_API_LIMIT)]
+    log.debug(f"Range starts for worker {worker_id}: {starts}")
     for start in starts:
         url = get_search_url(start=start, limit=PDB_SEARCH_API_LIMIT)
         response = get(url)
@@ -61,30 +66,35 @@ def task(worker_id: int, from_: int, chunk_size: int) -> None:
         if response.status_code == 200:
             log.debug("Ids received, starting file fetching.")
             if "result_set" in (formatted := response.json()):
-                files = []
-                failed = []
-                total_size = 0
+                failed = []  # TODO add failed handling after updating failed table with new column.
 
                 ids = [entry["identifier"] for entry in formatted["result_set"]]
+                graph_urls = {}
                 for id in ids:
-                    log.debug(f"Worker {worker_id} - fetching structure id {id}")
-                    versions = get_all_versions(id=id)
+                    graph_urls[id] = get_graphql_query(id)
 
-                    for version in versions:
-                        file, error = fetch_file_at_version(id=id, version=version)
-                        if file:
-                            total_size += len(file)
-                            files.append((id, version, file))
-                            if total_size > BYTE_LIMIT:
-                                insert_files(files)
-                                files = []
-                                total_size = 0
-                        else:
-                            failed.append(id)
-                if files:
-                    insert_files(files)
-            else:
-                return
+                with cf.ThreadPoolExecutor(max_workers=100) as executor:
+                    id_to_versions = dict(zip(graph_urls.keys(), executor.map(get_all_versions, graph_urls.values())))
+
+                with cf.ThreadPoolExecutor(max_workers=100) as executor:
+                    file_urls = {}
+                    for id in ids:
+                        versions = id_to_versions[id]
+                        full_id = get_full_id(id)
+                        file_urls[full_id] = []
+                        for version in versions:
+                            file_urls[full_id].append(get_file_url(full_id, version))
+                    id_to_data = dict(zip(file_urls.keys(), executor.map(get_files, file_urls.values())))
+                    files_to_insert = []
+                    for id, data in id_to_data:
+                        for idx, bytes_entry in enumerate(data):
+                            version = idx + 1
+                            new_file = InsertFile(
+                                protein_id=id, timestamp=dt.today(), version=version, file=bytes_entry
+                            )
+                            files_to_insert.append(new_file)
+                    insert_files(files_to_insert)
+
     log.debug(f"Worker {worker_id} finished.")
 
 

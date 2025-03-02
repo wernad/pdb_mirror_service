@@ -8,7 +8,7 @@ from app.config import PDB_DATA_API_URL, PDB_HTTP_FILE_URL, PDB_SEARCH_API_URL
 
 def get_full_id(id: str):
     """Returns 12-character id of given 4-character id."""
-    return f"pdb_0000{id}"
+    return f"pdb_0000{id.lower()}"
 
 
 def get_error_message(response: Response) -> str:
@@ -22,6 +22,23 @@ def get_error_message(response: Response) -> str:
     return message
 
 
+def get_file_url(id: str, version: str) -> str:
+    """Create file url based on id and version.
+
+    Parameters:
+        id: structure id
+        version: version to fetch
+    Returns:
+        tuple of bytes and error code
+    """
+    log.debug(f"Creating url for file - {id=} {version=}.")
+    category = id[1:3].lower()
+    file_name = f"{id}_xyz_v{version}.cif.gz"
+    url = f"{PDB_HTTP_FILE_URL}{category}/{id}/{file_name}"
+    log.debug(f"Created file url: {url}")
+    return url
+
+
 def get_graphql_query(id: str) -> str:
     """Helper method to create url encoded string for Data API."""
     log.debug(f"Generating GraphQL query string for id {id}")
@@ -29,8 +46,8 @@ def get_graphql_query(id: str) -> str:
     query = f'{{entry(entry_id: "{id}"){{pdbx_audit_revision_history{{major_revision}}}}}}'
     encoded = quote_plus(query)
 
-    log.debug(f"Query string created. {encoded}")
-    return encoded
+    url = f"{PDB_DATA_API_URL}?query={encoded}"
+    return url
 
 
 def get_search_url(start: int = 0, limit: int = 1000) -> str:
@@ -97,17 +114,57 @@ def get_all_versions(id: str) -> set[int]:
     return None
 
 
-def fetch_file_at_version(id: str, version: str):
+def fetch_files(urls: list[str]) -> list[bytes]:
+    """Fetches files from given urls.
+
+    Parameters:
+        urls: list of urls
+    Returns:
+        list of bytes
+    """
+    log.debug(f"Fetching {len(urls)} files.")
+    files = []
+
+    for url in urls:
+        response = get(url)
+
+        if response.status_code == 200:
+            files.append(response.content)
+    log.debug("Fetching done.")
+    return files
+
+
+def get_files(urls: list[str]) -> list[bytes]:
+    """Fetches files from given urls.
+
+    Parameters:
+        urls: list of urls
+    Returns:
+        list of bytes
+    """
+
+    files = []
+
+    for url in urls:
+        response = get(url)
+
+        if response.status_code == 200:
+            files.append(response.content)
+
+    return files
+
+
+def fetch_file_at_version(id: str, version: str) -> tuple:
     """Fetches file with given id at given version.
 
     Parameters:
         id: 12-character structure id
         version: version to fetch
     Returns:
-        bytes
+        tuple of bytes and error code
     """
 
-    category = id[1:3]
+    category = id[1:3].lower()
     file_name = f"{id}_xyz_v{version}.cif.gz"
     url = f"{PDB_HTTP_FILE_URL}{category}/{id}/{file_name}"
     response = get(url)
