@@ -15,7 +15,8 @@ PDB_FTP_STATUS_URL = "https://files.rcsb.org/pub/pdb/data/status/"
 PDB_HTTP_TIMEOUT = 5  # Seconds.
 PDB_HTTP_FILE_URL = "https://files-versioned.wwpdb.org/pdb_versioned/views/all/coordinates/mmcif/"
 
-WORKER_LIMIT = 5
+PROCESS_LIMIT = 5
+WORKER_LIMIT = 100
 CRON_JOB_DAY = 3  # 0-6 (Mon - Sun).
-BYTE_LIMIT = 10000000  # 10 MB
+
 API_PATH = "/api/v1"
