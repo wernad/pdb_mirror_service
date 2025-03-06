@@ -1,12 +1,13 @@
 from requests import get
 import concurrent.futures as cf
-import multiprocessing as mp
 from math import ceil
 from datetime import datetime as dt
+from time import sleep
+import logging
 
 from app.log import logger as log
 from app.config import WORKER_LIMIT, PDB_SEARCH_API_LIMIT
-from app.fetch.common import get_all_versions, get_search_url, get_graphql_query, get_file_url, get_files, get_full_id
+from app.fetch.common import get_last_version, get_search_url, get_file_url, get_file, get_full_id
 from app.services import ProteinService, FileService
 from app.database.database import get_session
 from app.database.models.file import InsertFile
@@ -43,59 +44,52 @@ def insert_files(files: list[InsertFile]) -> None:
         file_service.bulk_insert_new_files(files)
 
 
-# TODO fix too many requests error, possibly remove multiprocessing.
-def task(worker_id: int, start: int, end: int) -> None:
+def fetch_files(total: int) -> None:
     """Main function of a worker process.
 
-    Fetches IDs, versions and files. Inserts fetched data into database.
+    Fetches IDs and corresponding latest file entry. Inserts files into database.
 
     Parameters:
-        from_: start of range
-        chunk_size: how many entries to fetch
+        total: total number of ids to work with
     Returns:
         None
     """
-    log.debug(f"Starting worker {worker_id} with params: {start=}, {end=}")
+    log.debug("Entry fetching stareted.")
 
-    starts = [x for x in range(start, end, PDB_SEARCH_API_LIMIT)]
-    log.debug(f"Range starts for worker {worker_id}: {starts}")
+    logging.getLogger("requests").setLevel(logging.WARNING)
+
+    starts = [x for x in range(0, total, PDB_SEARCH_API_LIMIT)]
+    log.debug(f"Created range starts: {starts}")
+    total_processed = 0
     for start in starts:
         url = get_search_url(start=start, limit=PDB_SEARCH_API_LIMIT)
         response = get(url)
 
         if response.status_code == 200:
-            log.debug("Ids received, starting file fetching.")
             if "result_set" in (formatted := response.json()):
-                failed = []  # TODO add failed handling after updating failed table with new column.
-
                 ids = [entry["identifier"] for entry in formatted["result_set"]]
-                graph_urls = {}
+                log.debug(f"Received {len(ids)} ids: ")
+
+                with cf.ThreadPoolExecutor(max_workers=100) as executor:
+                    id_to_versions = dict(zip(ids, executor.map(get_last_version, ids)))
+
+                file_urls = {}
                 for id in ids:
-                    graph_urls[id] = get_graphql_query(id)
-
+                    version = id_to_versions[id]
+                    full_id = get_full_id(id)
+                    file_urls[full_id] = get_file_url(id, version)
                 with cf.ThreadPoolExecutor(max_workers=100) as executor:
-                    id_to_versions = dict(zip(graph_urls.keys(), executor.map(get_all_versions, graph_urls.values())))
+                    id_to_data = dict(zip(file_urls.keys(), executor.map(get_file, file_urls.values())))
 
-                with cf.ThreadPoolExecutor(max_workers=100) as executor:
-                    file_urls = {}
-                    for id in ids:
-                        versions = id_to_versions[id]
-                        full_id = get_full_id(id)
-                        file_urls[full_id] = []
-                        for version in versions:
-                            file_urls[full_id].append(get_file_url(full_id, version))
-                    id_to_data = dict(zip(file_urls.keys(), executor.map(get_files, file_urls.values())))
-                    files_to_insert = []
-                    for id, data in id_to_data:
-                        for idx, bytes_entry in enumerate(data):
-                            version = idx + 1
-                            new_file = InsertFile(
-                                protein_id=id, timestamp=dt.today(), version=version, file=bytes_entry
-                            )
-                            files_to_insert.append(new_file)
-                    insert_files(files_to_insert)
+        total_processed += len(ids)
+        log.debug(f"Processed {total_processed} so far.")
 
-    log.debug(f"Worker {worker_id} finished.")
+        # DO NOT DELETE!!!
+        sleep(5)  # Required to avoid 'Too many requests' error
+        # DO NOT DELETE!!!
+
+    log.debug("Entry fetching finished.")
+    logging.getLogger("requests").setLevel(logging.DEBUG)
 
 
 def get_linspace(total: int):
@@ -117,21 +111,7 @@ def run():
     if response.status_code == 200:
         total = response.json()["total_count"]
         log.debug(f"Total number of entries: {total}")
-        total = 1000  # TODO testing only
-        step, starts = get_linspace(total)
-
-        log.debug(f"Creating workers with params: {step=}, {starts=}.")
-        processes = []
-        for idx, start in enumerate(starts):
-            end = start + step
-            p = mp.Process(target=task, args=(idx, start, end))
-            p.start()
-            processes.append(p)
-
-        log.debug("Waiting for workers to finish.")
-        for p in processes:
-            p.join()
-
+        fetch_files(total)
     else:
         log.error(f"Received unexpected status code: {response.status_code}")
 
