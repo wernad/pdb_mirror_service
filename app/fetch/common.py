@@ -32,9 +32,11 @@ def get_file_url(id: str, version: str) -> str:
         tuple of bytes and error code
     """
     log.debug(f"Creating url for file - {id=} {version=}.")
-    category = id[1:3].lower()
-    file_name = f"{id}_xyz_v{version}.cif.gz"
-    url = f"{PDB_HTTP_FILE_URL}{category}/{id}/{file_name}"
+    id = id.lower()
+    full_id = get_full_id(id)
+    category = id[1:3]
+    file_name = f"{full_id}_xyz_v{version}.cif.gz"
+    url = f"{PDB_HTTP_FILE_URL}{category}/{full_id}/{file_name}"
     log.debug(f"Created file url: {url}")
     return url
 
@@ -74,11 +76,10 @@ def get_last_version(id: str) -> int | None:
     """Fetches latest version number of given file ID."""
     log.debug(f"Fetching latest version of a file with ID {id}.")
 
-    query = get_graphql_query(id)
+    url = get_graphql_query(id)
+    log.debug(f"Query for {id}: {url}")
 
-    url = f"{PDB_DATA_API_URL}?query={query}"
     response = get(url)
-
     if response.status_code == 200:
         body = response.json()
         version = body["data"]["entry"]["pdbx_audit_revision_history"][-1]["major_revision"]
@@ -134,7 +135,7 @@ def fetch_files(urls: list[str]) -> list[bytes]:
     return files
 
 
-def get_files(urls: list[str]) -> list[bytes]:
+def get_file(url: list[str]) -> list[bytes]:
     """Fetches files from given urls.
 
     Parameters:
@@ -145,11 +146,10 @@ def get_files(urls: list[str]) -> list[bytes]:
 
     files = []
 
-    for url in urls:
-        response = get(url)
+    response = get(url)
 
-        if response.status_code == 200:
-            files.append(response.content)
+    if response.status_code == 200:
+        files.append(response.content)
 
     return files
 
