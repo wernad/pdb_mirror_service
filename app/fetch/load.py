@@ -70,7 +70,7 @@ def fetch_files(total: int) -> None:
                 ids = [entry["identifier"] for entry in formatted["result_set"]]
                 log.debug(f"Received {len(ids)} ids: ")
 
-                with cf.ThreadPoolExecutor(max_workers=100) as executor:
+                with cf.ThreadPoolExecutor(max_workers=WORKER_LIMIT) as executor:
                     id_to_versions = dict(zip(ids, executor.map(get_last_version, ids)))
 
                 file_urls = {}
@@ -78,7 +78,7 @@ def fetch_files(total: int) -> None:
                     version = id_to_versions[id]
                     full_id = get_full_id(id)
                     file_urls[full_id] = get_file_url(id, version)
-                with cf.ThreadPoolExecutor(max_workers=100) as executor:
+                with cf.ThreadPoolExecutor(max_workers=WORKER_LIMIT) as executor:
                     id_to_data = dict(zip(file_urls.keys(), executor.map(get_file, file_urls.values())))
 
         total_processed += len(ids)
