@@ -26,6 +26,6 @@ class ProteinService:
         values = []
 
         for id in ids:
-            values.append({"protein_id": id, "deprecated": False})
+            values.append({"id": id, "deprecated": False})
 
         self.protein_repository.insert_in_bulk(values)
