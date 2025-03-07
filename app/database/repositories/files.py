@@ -3,26 +3,32 @@ from sqlmodel import insert, select
 
 from app.log import logger as log
 from app.database.repositories.base import RepositoryBase
-from app.database.models import File
+from app.database.models import FileBase, File, Change
 
 
 class FileRepository(RepositoryBase):
     """Repository for DB operations related to files."""
 
-    def get_latest_by_protein_id(self, protein_id: str) -> File:
+    def get_latest_by_protein_id(self, protein_id: str) -> FileBase:
         statement = select(File).where(File.protein_id == protein_id).order_by(File.version.desc()).limit(1)
         file = self.db.exec(statement).first()
 
         return file
 
-    def get_by_protein_id_at_version(self, protein_id: str, version: int) -> File:
+    def get_by_protein_id_at_version(self, protein_id: str, version: int) -> FileBase:
         statement = select(File).where(File.protein_id == protein_id, File.version == version)
         file = self.db.exec(statement).first()
 
         return file
 
-    def get_latest_by_id_before_date(self, protein_id: str, date: datetime) -> File:
-        statement = select(File).where(File.protein_id == protein_id, File.timestamp <= date)
+    def get_latest_by_id_before_date(self, protein_id: str, date: datetime) -> FileBase:
+        statement = (
+            select(File)
+            .join(Change, Change.file_id == File.id)
+            .where(Change.protein_id == protein_id, Change.timestamp <= date)
+            .order_by(Change.timestamp)
+            .limit(1)
+        )
         file = self.db.exec(statement).first()
 
         return file
@@ -36,8 +42,8 @@ class FileRepository(RepositoryBase):
 
         return 0
 
-    def get_new_files_after_date(self, date: datetime) -> list[File]:
-        statement = select(File).where(File.timestamp > date)
+    def get_new_files_after_date(self, date: datetime) -> list[FileBase]:
+        statement = select(File).join(Change, Change.file_id == File.id).where(Change.timestamp > date)
 
         files = self.db.exec(statement).all()
 
@@ -51,7 +57,6 @@ class FileRepository(RepositoryBase):
         try:
             self.db.add(new_file)
             self.db.commit()
-            self.db.refresh(new_file)
             log.debug(f"Inserted file version {version} for protein {protein_id}")
             return True
         except Exception as e:
@@ -59,9 +64,12 @@ class FileRepository(RepositoryBase):
             self.db.rollback()
             return False
 
-    def insert_in_bulk(self, values: list):
+    def insert_in_bulk(self, file_values: list):
         """Inserts new file rows in bulk."""
 
-        self.db.exec(insert(File), values)
+        result = self.db.exec(insert(File).returning(File.id).values(file_values))
         self.db.commit()
-        self.db.refresh()
+
+        ids = [row.id for row in result]
+
+        return ids
