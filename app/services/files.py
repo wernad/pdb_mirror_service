@@ -2,22 +2,25 @@ from datetime import datetime
 from sqlmodel import Session
 
 from app.database.repositories import FileRepository, ProteinRepository
-from app.database.models import File, InsertFile
+from app.database.models import FileBase, File, FileInsert, ChangeInsert
 from app.log import logger as log
+from app.database.repositories.change import ChangeRepository
 
 
 class FileService:
     file_repository: FileRepository
     protein_repository: ProteinRepository
+    change_repository: ChangeRepository
 
     def __init__(self, db: Session):
         self.file_repository = FileRepository(db)
         self.protein_repository = ProteinRepository(db)
+        self.change_repository = ChangeRepository(db)
 
     def get_latest_by_protein_id(self, protein_id: str) -> bytes:
         """Fetches latest entry of given protein."""
 
-        data: File = self.file_repository.get_latest_by_protein_id(protein_id)
+        data: FileBase = self.file_repository.get_latest_by_protein_id(protein_id)
 
         if data:
             binary_file = data.file
@@ -70,7 +73,7 @@ class FileService:
 
         return None
 
-    def insert_new_version(self, protein_id: str, file: bytes, version: int):
+    def insert_new_version(self, protein_id: str, file: bytes, version: int) -> bool:
         """Inserts a new version of given protein. If protein doesn't have an entry, create it."""
         protein = self.protein_repository.get_protein_by_id(protein_id=protein_id)
 
@@ -81,13 +84,22 @@ class FileService:
         result = self.file_repository.insert_new_version(protein_id=protein_id, file=file, version=version)
         return result
 
-    def bulk_insert_new_files(self, entries: list[InsertFile]):
+    def bulk_insert_new_files(self, files: list[FileInsert], changes: list[ChangeInsert]) -> None:
         """Inserts new file entries in bulk."""
-        values = []
+        file_values = []
+        change_values = []
 
-        for file in entries:
-            values.append(
-                {"protein_id": file.protein_id, "version": file.version, "file": file.file, "timestamp": file.timestamp}
+        for file in files:
+            file_values.append({"protein_id": file.protein_id, "version": file.version, "file": file.file})
+
+        file_ids = self.file_repository.insert_in_bulk(file_values)
+
+        for file_id, change in zip(file_ids, changes):
+            change_values.append(
+                {
+                    "protein_id": change.protein_id,
+                    "change_flag": change.operation_flag,
+                    "file_id": file_id,
+                    "timestamp": change.timestamp,
+                }
             )
-
-        self.file_repository.insert_in_bulk(values)
