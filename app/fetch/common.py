@@ -143,15 +143,14 @@ def get_file(url: list[str]) -> list[bytes]:
     Returns:
         list of bytes
     """
-
-    files = []
-
+    log.debug(f"Fetching file from url: {url}")
     response = get(url)
 
     if response.status_code == 200:
-        files.append(response.content)
-
-    return files
+        log.debug("Fetching complete.")
+        return response.content
+    log.error(f"Fetching failed for url: {url}")
+    return None
 
 
 def fetch_file_at_version(id: str, version: str) -> tuple:
