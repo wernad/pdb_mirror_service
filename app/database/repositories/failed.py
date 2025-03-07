@@ -22,7 +22,6 @@ class FailedFetchRepository(RepositoryBase):
             new_file = FailedFetch(fetch_date=datetime.now(), fetch_version=version, protein_id=protein_id, error=error)
             self.db.add(new_file)
             self.db.commit()
-            self.db.refresh(new_file)
             log.debug(f"Inserted failed fetch for version {version} and for protein {protein_id}")
             return True
         except Exception as e:
