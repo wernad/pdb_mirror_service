@@ -19,7 +19,6 @@ class ProteinRepository(RepositoryBase):
         try:
             self.db.add(new_protein)
             self.db.commit()
-            self.db.refresh(new_protein)
             log.debug(f"Inserted new protein entry {protein_id}")
         except Exception as e:
             self.db.rollback()
@@ -45,6 +44,5 @@ class ProteinRepository(RepositoryBase):
     def insert_in_bulk(self, values: list):
         """Inserts new protein rows in bulk."""
 
-        self.db.exec(insert(Protein), values)
+        self.db.exec(insert(Protein).values(values))
         self.db.commit()
-        self.db.refresh()
