@@ -9,8 +9,8 @@ from app.log import logger as log
 from app.config import WORKER_LIMIT, PDB_SEARCH_API_LIMIT
 from app.fetch.common import get_last_version, get_search_url, get_file_url, get_file, get_full_id
 from app.services import ProteinService, FileService
-from app.database.database import get_session
-from app.database.models.file import InsertFile
+from app.database.database import db_context
+from app.database.models import FileInsert, ChangeInsert
 
 
 def fetch_ids(start: int, limit: int) -> list[str]:
@@ -31,23 +31,69 @@ def fetch_ids(start: int, limit: int) -> list[str]:
         return response.json()
 
 
-def insert_files(files: list[InsertFile]) -> None:
+def get_latest_versions(ids: list[str]) -> dict:
+    """Returns dictionary of latest versions of each protein ID."""
+
+    with cf.ThreadPoolExecutor(max_workers=WORKER_LIMIT) as executor:
+        id_to_version = dict(zip(ids, executor.map(get_last_version, ids)))
+
+    return id_to_version
+
+
+def get_file_urls(ids: list[str], id_to_version: dict) -> dict:
+    """Returns url for fetching latest file for each protein ID."""
+
+    file_urls = {}
+    for id in ids:
+        version = id_to_version[id]
+        file_urls[id] = get_file_url(id, version)
+
+    return file_urls
+
+
+def fetch_files(file_urls: dict, id_to_version: dict) -> tuple:
+    """Fetches files from given urls and returns SQLModel objects for insertion, also returns ids that failed."""
+    with cf.ThreadPoolExecutor(max_workers=WORKER_LIMIT) as executor:
+        id_to_data = dict(zip(file_urls.keys(), executor.map(get_file, file_urls.values())))
+
+    failed = []
+    files_to_insert = []
+    changes_to_insert = []
+
+    for id, data in id_to_data.items():
+        if data:
+            full_id = get_full_id(id)
+            version = id_to_version[id]
+
+            new_file = FileInsert(protein_id=full_id, version=version, file=data)
+            files_to_insert.append(new_file)
+
+            new_change = ChangeInsert(protein_id=full_id, operation_flag=1, timestamp=dt.now())
+            changes_to_insert.append(new_change)
+        else:
+            failed.append(id)
+
+    return files_to_insert, changes_to_insert, failed
+
+
+def insert_files(files: list[FileInsert], changes: list[ChangeInsert]) -> None:
     """Inserts multiple new file entries at once."""
 
-    with get_session() as session:
+    with db_context() as session:
         protein_service = ProteinService(session)
         file_service = FileService(session)
 
         ids = [file.protein_id for file in files]
         protein_service.bulk_insert_new_proteins(ids=ids)
 
-        file_service.bulk_insert_new_files(files)
+        file_service.bulk_insert_new_files(files, changes)
 
 
-def fetch_files(total: int) -> None:
-    """Main function of a worker process.
+def fetch_all(total: int) -> None:
+    """Fetches IDs and corresponding latest file entries and stores them in database.
 
-    Fetches IDs and corresponding latest file entry. Inserts files into database.
+    Uses threads to speed up the fetching but requires explicit timeout after given batch,
+    to avoid overwhelming PDB APIs.
 
     Parameters:
         total: total number of ids to work with
@@ -57,29 +103,26 @@ def fetch_files(total: int) -> None:
     log.debug("Entry fetching stareted.")
 
     logging.getLogger("requests").setLevel(logging.WARNING)
+    logging.getLogger("urllib3").setLevel(logging.WARNING)
 
     starts = [x for x in range(0, total, PDB_SEARCH_API_LIMIT)]
     log.debug(f"Created range starts: {starts}")
     total_processed = 0
+    failed = []
     for start in starts:
         url = get_search_url(start=start, limit=PDB_SEARCH_API_LIMIT)
         response = get(url)
+        if response.status_code == 200 and "result_set" in (formatted := response.json()):
+            ids = [entry["identifier"] for entry in formatted["result_set"]]
+            log.debug(f"Received {len(ids)} ids.")
 
-        if response.status_code == 200:
-            if "result_set" in (formatted := response.json()):
-                ids = [entry["identifier"] for entry in formatted["result_set"]]
-                log.debug(f"Received {len(ids)} ids: ")
+            id_to_version = get_latest_versions(ids)
+            file_urls = get_file_urls(ids, id_to_version)
 
-                with cf.ThreadPoolExecutor(max_workers=WORKER_LIMIT) as executor:
-                    id_to_versions = dict(zip(ids, executor.map(get_last_version, ids)))
+            files_to_insert, changes_to_insert, failed_batch = fetch_files(file_urls, id_to_version)
 
-                file_urls = {}
-                for id in ids:
-                    version = id_to_versions[id]
-                    full_id = get_full_id(id)
-                    file_urls[full_id] = get_file_url(id, version)
-                with cf.ThreadPoolExecutor(max_workers=WORKER_LIMIT) as executor:
-                    id_to_data = dict(zip(file_urls.keys(), executor.map(get_file, file_urls.values())))
+            insert_files(files_to_insert, changes_to_insert)
+            failed.extend(failed_batch)
 
         total_processed += len(ids)
         log.debug(f"Processed {total_processed} so far.")
@@ -89,7 +132,13 @@ def fetch_files(total: int) -> None:
         # DO NOT DELETE!!!
 
     log.debug("Entry fetching finished.")
+    if failed:
+        log.debug(f"Number of failed ids: {len(failed)}")
+        with open("failed.txt", "w") as file:
+            file.write("\n".join([x for x in failed]))
+
     logging.getLogger("requests").setLevel(logging.DEBUG)
+    logging.getLogger("urllib3").setLevel(logging.DEBUG)
 
 
 def get_linspace(total: int):
@@ -111,7 +160,7 @@ def run():
     if response.status_code == 200:
         total = response.json()["total_count"]
         log.debug(f"Total number of entries: {total}")
-        fetch_files(total)
+        fetch_all(total)
     else:
         log.error(f"Received unexpected status code: {response.status_code}")
 
