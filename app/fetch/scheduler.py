@@ -12,7 +12,7 @@ from app.config import (
     CRON_JOB_DAY,
     PDB_FTP_STATUS_URL,
 )
-from app.database.database import get_session
+from app.database.database import db_context
 from app.fetch.common import fetch_file_at_version, get_last_version, get_full_id
 
 
@@ -49,7 +49,7 @@ def process_valid(new: bool):
     """Processes added or updated entries based on flag."""
     log.debug(f"Processing {'new' if new else 'modified'} entries.")
     last_date = get_last_date()
-    with get_session() as session:
+    with db_context() as session:
         file_service = FileService(session)
         added = get_list_file(last_date, "added")
         failed = []
@@ -91,7 +91,7 @@ def process_obsolete() -> None:
     """Handles processing of removed entries."""
     log.debug("Processing obsolete entries.")
     last_date = get_last_date()
-    with get_session() as session:
+    with db_context() as session:
         protein_service = ProteinService(session)
         file_service = FileService(session)
         obsolete = get_list_file(last_date, "obsolete")
