@@ -11,7 +11,7 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_PORT: 5432
     ports:
-      - "127.0.0.1:5435:5432"
+      - "127.0.0.1:5436:5432"
     volumes:
     - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -74,12 +74,6 @@ networks:
       config:
         - subnet: 172.21.0.0/29 # 5 hosts + gateway
           gateway: 172.21.0.1
-
-restart_policy:
-  condition: any
-  delay: 5s
-  max_attempts: 3
-  window: 120s
 
 volumes:
   postgres_data:
