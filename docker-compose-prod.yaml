@@ -1,0 +1,85 @@
+version: 3.8
+name: pdb_mirror
+
+services:
+  pg_mirror:
+    image: postgres:14
+    container_name: pg_mirror
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_PORT: 5432
+    ports:
+      - "127.0.0.1:5435:5432"
+    volumes:
+    - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "${DB_USER}", "-d", "${DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      pdb_mirror_net:
+        ipv4_address: 172.21.0.3
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+    restart: always
+
+  be_mirror:
+    build: .
+    container_name: be_mirror
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --root-path /app --proxy-headers --workers 4
+    environment:
+      MIRROR_DB_NAME: ${DB_NAME}
+      MIRROR_DB_USER: ${DB_USER}
+      MIRROR_DB_PASS: ${DB_PASSWORD}
+      MIRROR_DB_HOST: 172.21.0.3
+      MIRROR_DB_PORT: 5432
+    volumes:
+      - .:/opt/pdb_mirror
+      # - ${MIRROR_DATA:-/data}:/data:ro
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "172.21.0.1:8000/api/v1/files/ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: journald
+      options:
+        tag: pdb_mirror
+    networks:
+      pdb_mirror_net:
+        ipv4_address: 172.21.0.2
+    depends_on:
+      pg_mirror:
+        condition: service_healthy
+        restart: true
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 2G
+    restart: always
+    
+networks:
+  pdb_mirror_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.21.0.0/29 # 5 hosts + gateway
+          gateway: 172.21.0.1
+
+restart_policy:
+  condition: any
+  delay: 5s
+  max_attempts: 3
+  window: 120s
+
+volumes:
+  postgres_data:
