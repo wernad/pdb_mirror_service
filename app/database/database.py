@@ -10,11 +10,11 @@ __all__ = ["get_session", "db_context", "create_db_and_tables"]
 DATABASE_URL = str(
     MultiHostUrl.build(
         scheme="postgresql",
-        username=environ.get("DB_USER", DB_USER),
-        password=environ.get("DB_PASSWORD", DB_PASSWORD),
-        host=environ.get("DB_HOST", DB_HOST),
-        port=environ.get("DB_PORT", DB_PORT),
-        path=environ.get("DB_NAME", DB_NAME),
+        username=environ.get("POSTGRES_USER", DB_USER),
+        password=environ.get("POSTGRES_PASSWORD", DB_PASSWORD),
+        host=environ.get("POSTGRES_HOST", DB_HOST),
+        port=int(port) if (port := environ.get("POSTGRES_PORT", None)) else DB_PORT,
+        path=environ.get("POSTGRES_NAME", DB_NAME),
     )
 )
 
