@@ -32,7 +32,6 @@ services:
       MIRROR_DB_PORT: 5432
     volumes:
       - .:/opt/pdb_mirror
-      # - ${MIRROR_DATA:-/data}:/data:ro
     ports:
       - "8000:8000"
     healthcheck:
