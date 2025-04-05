@@ -25,6 +25,7 @@ engine = create_engine(DATABASE_URL, echo=True)
 def get_session() -> Generator[Session, None, None]:
     with Session(engine) as session:
         yield session
+        session.expunge_all()
 
 
 db_context = contextmanager(get_session)
