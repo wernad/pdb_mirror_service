@@ -1,5 +1,6 @@
 from contextlib import asynccontextmanager
 
+from psycopg2 import OperationalError
 from fastapi import FastAPI, APIRouter
 from starlette.middleware.cors import CORSMiddleware
 
@@ -7,7 +8,6 @@ from app.log import logger as log
 from app.config import API_PATH
 from app.api.main import api_router
 from app.database.database import create_db_and_tables
-from psycopg2 import OperationalError
 from app.fetch.scheduler import get_scheduler
 
 router = APIRouter()
