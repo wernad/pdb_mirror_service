@@ -1,8 +1,9 @@
+from datetime import datetime
 from sqlmodel import insert, select
 
 from app.log import logger as log
 from app.database.repositories.base import RepositoryBase
-from app.database.models.protein import Protein
+from app.database.models import Protein, Change
 
 
 class ProteinRepository(RepositoryBase):
@@ -13,6 +14,18 @@ class ProteinRepository(RepositoryBase):
         protein = self.db.exec(statement).first()
 
         return protein
+
+    def get_proteins_after_date(self, date: datetime) -> list[str]:
+        """Retrieves proteins with files created after given date."""
+        statement = (
+            select(Protein.id)
+            .join(Change, Change.protein_id == Protein.id)
+            .where(Change.timestamp > date)
+        )
+
+        result = self.db.exec(statement).all()
+
+        return result
 
     def insert_protein(self, protein_id: str, deprecated: bool = False) -> str:
         new_protein = Protein(id=protein_id, deprecated=deprecated)
@@ -36,7 +49,9 @@ class ProteinRepository(RepositoryBase):
                 return True
             except Exception as e:
                 self.db.rollback()
-                log.error(f"Failed to update status of protein {protein_id}. Error: {str(e)}")
+                log.error(
+                    f"Failed to update status of protein {protein_id}. Error: {str(e)}"
+                )
         else:
             log.error(f"Protein with id {protein_id} not found.")
             return False
