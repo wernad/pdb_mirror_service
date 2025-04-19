@@ -10,11 +10,11 @@ curl \
 cmake \
 git \
 wget \
+screen \
 unzip \
 libboost-all-dev \
 && rm -rf /var/lib/apt/lists/*
 
-# ENV TZ=Europe/Prague
 
 # Working directory
 RUN mkdir -p /opt/${APP_NAME}
