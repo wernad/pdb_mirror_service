@@ -1,5 +1,6 @@
 from urllib.parse import quote_plus
 from requests import Response, get
+from requests.exceptions import ConnectTimeout
 import json
 
 from app.log import logger as log
@@ -45,7 +46,9 @@ def get_graphql_query(id: str) -> str:
     """Helper method to create url encoded string for Data API."""
     log.debug(f"Generating GraphQL query string for id {id}")
 
-    query = f'{{entry(entry_id: "{id}"){{pdbx_audit_revision_history{{major_revision}}}}}}'
+    query = (
+        f'{{entry(entry_id: "{id}"){{pdbx_audit_revision_history{{major_revision}}}}}}'
+    )
     encoded = quote_plus(query)
 
     url = f"{PDB_DATA_API_URL}?query={encoded}"
@@ -59,7 +62,10 @@ def get_search_url(start: int = 0, limit: int = 1000) -> str:
         "query": {
             "type": "terminal",
             "service": "text",
-            "parameters": {"attribute": "rcsb_accession_info.initial_release_date", "operator": "exists"},
+            "parameters": {
+                "attribute": "rcsb_accession_info.initial_release_date",
+                "operator": "exists",
+            },
         },
         "request_options": {"paginate": {"start": start, "rows": limit}},
         "return_type": "entry",
@@ -82,7 +88,9 @@ def get_last_version(id: str) -> int | None:
     response = get(url)
     if response.status_code == 200:
         body = response.json()
-        version = body["data"]["entry"]["pdbx_audit_revision_history"][-1]["major_revision"]
+        version = body["data"]["entry"]["pdbx_audit_revision_history"][-1][
+            "major_revision"
+        ]
         log.debug(f"File {id} - latest version: {version}.")
         return version
 
@@ -144,13 +152,20 @@ def get_file(url: list[str]) -> list[bytes]:
         list of bytes
     """
     log.debug(f"Fetching file from url: {url}")
-    response = get(url)
+    finished = False
+    while not finished:
+        try:
+            response = get(url)
+            code = response.status_code
+            if code == 200:
+                log.debug("Fetching complete.")
+                finished = True
+                return response.content
+            log.error(f"Unexpected status code {code} for url: {url}")
+        except ConnectTimeout as _:
+            log.error(f"Connection timed out on url: {url}")
 
-    if response.status_code == 200:
-        log.debug("Fetching complete.")
-        return response.content
     log.error(f"Fetching failed for url: {url}")
-    return None
 
 
 def fetch_file_at_version(id: str, version: str) -> tuple:
