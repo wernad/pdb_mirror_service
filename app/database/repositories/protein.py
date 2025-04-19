@@ -3,7 +3,7 @@ from sqlmodel import insert, select
 
 from app.log import logger as log
 from app.database.repositories.base import RepositoryBase
-from app.database.models import Protein, Change
+from app.database.models import Protein, Change, Operations
 
 
 class ProteinRepository(RepositoryBase):
@@ -20,7 +20,11 @@ class ProteinRepository(RepositoryBase):
         statement = (
             select(Protein.id)
             .join(Change, Change.protein_id == Protein.id)
-            .where(Change.timestamp > date)
+            .where(
+                Change.timestamp > date,
+                Change.operation_flag == Operations.ADDED
+                or Change.operation_flag == Operations.MODIFIED,
+            )
         )
 
         result = self.db.exec(statement).all()
