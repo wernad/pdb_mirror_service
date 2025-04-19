@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlmodel import insert, select
+from sqlmodel import insert, select, or_
 
 from app.log import logger as log
 from app.database.repositories.base import RepositoryBase
@@ -22,8 +22,10 @@ class ProteinRepository(RepositoryBase):
             .join(Change, Change.protein_id == Protein.id)
             .where(
                 Change.timestamp > date,
-                Change.operation_flag == Operations.ADDED
-                or Change.operation_flag == Operations.MODIFIED,
+                or_(
+                    Change.operation_flag == Operations.ADDED.value,
+                    Change.operation_flag == Operations.MODIFIED.value,
+                ),
             )
         )
 
