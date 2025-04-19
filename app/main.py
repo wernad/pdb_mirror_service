@@ -7,7 +7,7 @@ from starlette.middleware.cors import CORSMiddleware
 from app.log import logger as log
 from app.config import API_PATH
 from app.api.main import api_router
-from app.database.database import create_db_and_tables
+from app.database.database import create_db_and_tables, init_flag_data
 from app.fetch.scheduler import get_scheduler
 
 router = APIRouter()
@@ -17,9 +17,8 @@ router.include_router(api_router, prefix=API_PATH)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     try:
-        log.debug("Creating database and tables.")
         create_db_and_tables()
-        log.debug("Database and tables created successfully.")
+        init_flag_data()
     except OperationalError as e:
         log.error(f"An operational error occured white creating tables: {e.pgcode}")
 

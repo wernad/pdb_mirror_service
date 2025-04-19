@@ -1,9 +1,20 @@
+from enum import Enum
 from sqlmodel import Field, SQLModel
 
 
-# 1 - added
-# 2 - modified
-# 3 - obsolete
+class Operations(Enum):
+    ADDED = 1
+    MODIFIED = 2
+    OBSOLETE = 3
+
+
+OPERATIONS_NAMES = {
+    Operations.ADDED: "added",
+    Operations.MODIFIED: "modified",
+    Operations.OBSOLETE: "obsolete",
+}
+
+
 class OperationFlagBase(SQLModel):
     name: str
 
