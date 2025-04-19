@@ -37,10 +37,14 @@ class FileService:
 
         return None
 
-    def get_by_version_and_protein_id(self, protein_id: str, version: int) -> bytes | None:
+    def get_by_version_and_protein_id(
+        self, protein_id: str, version: int
+    ) -> bytes | None:
         """Fetches specific version of a protein entry."""
 
-        data: File = self.file_repository.get_by_protein_id_at_version(protein_id, version)
+        data: File = self.file_repository.get_by_protein_id_at_version(
+            protein_id, version
+        )
 
         if data:
             binary_file = data.file
@@ -48,7 +52,9 @@ class FileService:
 
         return None
 
-    def get_latest_by_id_before_date(self, protein_id: str, date: datetime) -> bytes | None:
+    def get_latest_by_id_before_date(
+        self, protein_id: str, date: datetime
+    ) -> bytes | None:
         """Fetches latest protein entry prior to specified date."""
 
         data: File = self.file_repository.get_latest_by_id_before_date(protein_id, date)
@@ -81,16 +87,26 @@ class FileService:
             log.debug(f"Protein {protein_id} not found, inserting new protein entry.")
             self.protein_repository.insert_protein(protein_id=protein_id)
 
-        result = self.file_repository.insert_new_version(protein_id=protein_id, file=file, version=version)
+        result = self.file_repository.insert_new_version(
+            protein_id=protein_id, file=file, version=version
+        )
         return result
 
-    def bulk_insert_new_files(self, files: list[FileInsert], changes: list[ChangeInsert]) -> None:
+    def bulk_insert_new_files(
+        self, files: list[FileInsert], changes: list[ChangeInsert]
+    ) -> None:
         """Inserts new file entries in bulk."""
         file_values = []
         change_values = []
 
         for file in files:
-            file_values.append({"protein_id": file.protein_id, "version": file.version, "file": file.file})
+            file_values.append(
+                {
+                    "protein_id": file.protein_id,
+                    "version": file.version,
+                    "file": file.file,
+                }
+            )
 
         file_ids = self.file_repository.insert_in_bulk(file_values)
 

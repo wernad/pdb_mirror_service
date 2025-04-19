@@ -16,7 +16,11 @@ class ChangeService:
         values = []
         for entry in entries:
             values.append(
-                {"protein_id": entry.protein_id, "operation_flag": entry.operation_flag, "timestamp": entry.timestamp}
+                {
+                    "protein_id": entry.protein_id,
+                    "operation_flag": entry.operation_flag,
+                    "timestamp": entry.timestamp,
+                }
             )
 
         self.change_repository.insert_bulk(entries)
