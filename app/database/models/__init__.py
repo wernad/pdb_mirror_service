@@ -1,4 +1,4 @@
-from app.database.models.protein import Protein
+from app.database.models.protein import Protein, Padding
 from app.database.models.file import FileBase, File, FileInsert
 from app.database.models.failed import FailedFetch
 from app.database.models.change import Change, ChangeInsert

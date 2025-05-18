@@ -5,9 +5,9 @@ from datetime import datetime as dt
 from time import sleep
 import logging
 
-from app.log import logger as log
+from app.log import log as log
 from app.config import WORKER_LIMIT, PDB_SEARCH_API_LIMIT
-from app.fetch.common import (
+from app.fetch.utils import (
     get_last_version,
     get_search_url,
     get_file_url,
@@ -16,7 +16,7 @@ from app.fetch.common import (
 )
 from app.services import ProteinService, FileService
 from app.database.database import db_context
-from app.database.models import FileInsert, ChangeInsert
+from app.database.models import FileInsert, ChangeInsert, Operations
 
 
 def fetch_ids(start: int, limit: int) -> list[str]:
@@ -35,6 +35,10 @@ def fetch_ids(start: int, limit: int) -> list[str]:
 
     if response.status_code == 200:
         return response.json()
+
+    log.error(f"Received unexpected status code: {response.status_code}")
+
+    return None
 
 
 def get_latest_versions(ids: list[str]) -> dict:
@@ -77,7 +81,10 @@ def fetch_files(file_urls: dict, id_to_version: dict) -> tuple:
             files_to_insert.append(new_file)
 
             new_change = ChangeInsert(
-                protein_id=full_id, operation_flag=1, timestamp=dt.now()
+                file_id=0,  # placeholder
+                protein_id=full_id,
+                operation_flag=Operations.ADDED.value,
+                timestamp=dt.now(),
             )
             changes_to_insert.append(new_change)
         else:
@@ -101,8 +108,6 @@ def insert_files(files: list[FileInsert], changes: list[ChangeInsert]) -> None:
             batch_files = files[i : i + batch_size]
             batch_changes = changes[i : i + batch_size] if i < len(changes) else []
             file_service.bulk_insert_new_files(batch_files, batch_changes)
-
-        # file_service.bulk_insert_new_files(files, changes)
 
 
 def fetch_all(start: int, total: int) -> None:
@@ -179,17 +184,13 @@ def run(start: int | None):
         start: starting id for fetching.
     """
     log.info("Beggining fetch of all PDB entries.")
-    url = get_search_url(start=0, limit=0)
+    ids_data = fetch_ids(start=0, limit=0)
 
-    response = get(url)
-
-    if response.status_code == 200:
-        total = response.json()["total_count"]
+    if ids_data is not None:
+        total = ids_data["total_count"]
         log.debug(f"Total number of entries: {total}")
         actual_start = start if start else 0
         fetch_all(start=actual_start, total=total)
-    else:
-        log.error(f"Received unexpected status code: {response.status_code}")
 
 
 if __name__ == "__main__":

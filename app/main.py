@@ -4,11 +4,11 @@ from psycopg2 import OperationalError
 from fastapi import FastAPI, APIRouter
 from starlette.middleware.cors import CORSMiddleware
 
-from app.log import logger as log
+from app.log import log as log
 from app.config import API_PATH
 from app.api.main import api_router
 from app.database.database import create_db_and_tables, init_flag_data
-from app.fetch.scheduler import get_scheduler
+from app.fetch.scheduler import scheduler
 
 router = APIRouter()
 router.include_router(api_router, prefix=API_PATH)
@@ -21,15 +21,13 @@ async def lifespan(app: FastAPI):
         init_flag_data()
     except OperationalError as e:
         log.error(f"An operational error occured white creating tables: {e.pgcode}")
-
-    scheduler = get_scheduler()
     scheduler.start()
     yield
     scheduler.shutdown()
 
 
 app = FastAPI(
-    title="PDB Mirror 0.1 API",
+    title="PDB Mirror 1.0 API",
     contact={"name": "Ján Kučera"},
     redoc_url=None,
     docs_url="/",

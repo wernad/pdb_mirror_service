@@ -10,7 +10,7 @@ from app.config import DB_USER, DB_PASSWORD, DB_HOST, DB_NAME, DB_PORT
 from app.database.repositories import OperationFlagRepository
 
 
-from app.log import logger as log
+from app.log import log as log
 
 __all__ = ["get_session", "db_context", "create_db_and_tables"]
 

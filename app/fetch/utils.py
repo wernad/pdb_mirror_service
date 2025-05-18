@@ -1,10 +1,16 @@
 from urllib.parse import quote_plus
+from arrow import utcnow
 from requests import Response, get
 from requests.exceptions import ConnectTimeout
 import json
 
-from app.log import logger as log
-from app.config import PDB_DATA_API_URL, PDB_HTTP_FILE_URL, PDB_SEARCH_API_URL
+from app.log import log as log
+from app.config import (
+    PDB_DATA_API_URL,
+    PDB_FTP_STATUS_URL,
+    PDB_HTTP_FILE_URL,
+    PDB_SEARCH_API_URL,
+)
 
 
 def get_full_id(id: str):
@@ -187,3 +193,24 @@ def fetch_file_at_version(id: str, version: str) -> tuple:
         body = response.content
         return body, None
     return None, response.status_code
+
+
+def get_list_file(from_date: str, file_name: str) -> list[str]:
+    """Fetches file with new, updated or removed entries."""
+    log.debug(f"Trying to fetch file with '{file_name}' entries.")
+    url = f"{PDB_FTP_STATUS_URL}{from_date}/{file_name}.pdb"
+    response = get(url)
+
+    if response.status_code == 200:
+        log.debug("File sucessfully fetched.")
+        return list(response.text.split())
+
+    log.error(f"No file found for '{file_name}' entries.")
+    return []
+
+
+def get_last_date():
+    """Gets last date when files were updated (currently Friday)."""
+    today = utcnow()
+    last_date = today.shift(weeks=-1, weekday=5).format("YYYYMMDD")
+    return last_date

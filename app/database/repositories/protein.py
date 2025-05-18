@@ -1,9 +1,9 @@
 from datetime import datetime
-from sqlmodel import insert, select, or_
+from sqlmodel import insert, select, or_, func
 
-from app.log import logger as log
+from app.log import log as log
 from app.database.repositories.base import RepositoryBase
-from app.database.models import Protein, Change, Operations
+from app.database.models import Protein, Change, Operations, File
 
 
 class ProteinRepository(RepositoryBase):
@@ -15,8 +15,34 @@ class ProteinRepository(RepositoryBase):
 
         return protein
 
+    def get_total_count(self) -> int:
+        statement = select(func.count(Protein.id))
+
+        result = self.db.exec(statement).first()
+
+        return result
+
+    def get_all_protein_ids(self, limit: int, offset: int) -> list[str]:
+        """Retrieves protein ids and their latest version numbers."""
+        statement = (
+            select(Protein.id, func.max(File.version).label("version"))
+            .join(File, File.protein_id == Protein.id)
+            .group_by(Protein.id)
+            .order_by(Protein.id)
+        )
+
+        if limit:
+            statement = statement.limit(limit)
+
+        if offset:
+            statement = statement.offset(offset)
+
+        result = self.db.exec(statement).all()
+
+        return result
+
     def get_proteins_after_date(self, date: datetime) -> list[str]:
-        """Retrieves proteins with files created after given date."""
+        """Retrieves proteins with files created after given date with versions."""
         statement = (
             select(Protein.id)
             .join(Change, Change.protein_id == Protein.id)

@@ -1,7 +1,7 @@
 from datetime import datetime
 from sqlmodel import select
 
-from app.log import logger as log
+from app.log import log as log
 from app.database.repositories.base import RepositoryBase
 from app.database.models import FailedFetch
 
@@ -19,10 +19,17 @@ class FailedFetchRepository(RepositoryBase):
         """Inserts new file version of given protein id."""
 
         try:
-            new_file = FailedFetch(fetch_date=datetime.now(), fetch_version=version, protein_id=protein_id, error=error)
+            new_file = FailedFetch(
+                fetch_date=datetime.now(),
+                fetch_version=version,
+                protein_id=protein_id,
+                error=error,
+            )
             self.db.add(new_file)
             self.db.commit()
-            log.debug(f"Inserted failed fetch for version {version} and for protein {protein_id}")
+            log.debug(
+                f"Inserted failed fetch for version {version} and for protein {protein_id}"
+            )
             return True
         except Exception as e:
             self.db.rollback()

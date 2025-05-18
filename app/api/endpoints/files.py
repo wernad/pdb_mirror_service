@@ -3,7 +3,7 @@ from datetime import datetime as dt
 from fastapi import APIRouter
 from fastapi.responses import PlainTextResponse
 
-from app.log import logger as log
+from app.log import log as log
 from app.api.dependencies import FileServiceDep, IDCheckDep, ProteinServiceDep
 from app.api.exceptions import FileNotFound, FileVersionNotFound, NoFilesAfterDate
 

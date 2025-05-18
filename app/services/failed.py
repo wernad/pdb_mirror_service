@@ -1,8 +1,12 @@
 from sqlmodel import Session
-from app.database.repositories import FileRepository, FailedFetchRepository, ProteinRepository
+from app.database.repositories import (
+    FileRepository,
+    FailedFetchRepository,
+    ProteinRepository,
+)
 
 from app.database.models import FailedFetch
-from app.log import logger as log
+from app.log import log as log
 
 
 class FailedFetchService:
@@ -22,7 +26,10 @@ class FailedFetchService:
             log.debug(f"Protein {protein_id} not found, inserting new protein entry.")
             self.protein_repository.insert_protein(protein_id=protein_id)
 
-        version = self.file_repository.get_latest_version_by_protein_id(protein_id=protein_id) + 1
+        version = (
+            self.file_repository.get_latest_version_by_protein_id(protein_id=protein_id)
+            + 1
+        )
         result = self.failed_fetch_repository.insert_new_failed_fetch(
             protein_id=protein_id, version=version, error=error
         )

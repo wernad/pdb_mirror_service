@@ -3,7 +3,7 @@ from sqlmodel import insert, select
 from app.database.repositories.base import RepositoryBase
 from app.database.models import OperationFlag, Operations, OPERATIONS_NAMES
 
-from app.log import logger as log
+from app.log import log as log
 
 
 class OperationFlagRepository(RepositoryBase):

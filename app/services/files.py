@@ -3,7 +3,7 @@ from sqlmodel import Session
 
 from app.database.repositories import FileRepository, ProteinRepository
 from app.database.models import FileBase, File, FileInsert, ChangeInsert
-from app.log import logger as log
+from app.log import log as log
 from app.database.repositories.change import ChangeRepository
 
 
@@ -114,8 +114,10 @@ class FileService:
             change_values.append(
                 {
                     "protein_id": change.protein_id,
-                    "change_flag": change.operation_flag,
+                    "operation_flag": change.operation_flag,
                     "file_id": file_id,
                     "timestamp": change.timestamp,
                 }
             )
+
+        self.change_repository.insert_bulk(change_values)
