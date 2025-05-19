@@ -1,3 +1,9 @@
+"""Database configuration and management module.
+
+This module provides database connection management, table creation,
+and initialization functionality for the PDB Mirror application.
+"""
+
 from contextlib import contextmanager
 from collections.abc import Generator
 from os import environ, getpid
@@ -30,6 +36,11 @@ engine = create_engine(DATABASE_URL, echo=True)
 
 
 def get_session() -> Generator[Session, None, None]:
+    """Creates a new database session.
+
+    Returns:
+        A generator that yields a database session.
+    """
     with Session(engine) as session:
         yield session
         session.expunge_all()
@@ -47,6 +58,11 @@ REQUIRED_TABLES = [
 
 
 def check_if_tables_exist():
+    """Checks if all required database tables exist.
+
+    Returns:
+        bool: True if all required tables exist, False otherwise.
+    """
     inspector = inspect(engine)
 
     for table in REQUIRED_TABLES:
@@ -57,13 +73,21 @@ def check_if_tables_exist():
 
 
 def create_db_and_tables():
+    """Creates all database tables defined in SQLModel models."""
     log.debug("Creating database and tables.")
     SQLModel.metadata.create_all(bind=engine)
     log.debug("Database and tables created and filled successfully.")
 
 
 def init_flag_data():
-    """Insert rows into tables with flag-like data (method, category, source)."""
+    """Initializes flag data in the database.
+
+    This function inserts initial data into tables that store flag-like data
+    (method, category, source). It uses a database lock to ensure only one
+    process can perform the initialization at a time.
+
+    The function will wait if another process is already initializing the data.
+    """
     log.debug("Inserting flag data to tables.")
     with db_context() as db:
         log.debug(f"Fill DB -- WORKER {getpid()} -- Attempting to acquire lock...")

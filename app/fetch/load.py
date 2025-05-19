@@ -1,3 +1,9 @@
+"""Data loading module for PDB entries.
+
+This module provides functions for fetching and loading PDB entries into the database,
+including parallel processing capabilities and error handling.
+"""
+
 from requests import get
 import concurrent.futures as cf
 from math import ceil
@@ -20,15 +26,15 @@ from app.database.models import FileInsert, ChangeInsert, Operations
 
 
 def fetch_ids(start: int, limit: int) -> list[str]:
-    """Fetches a list of ids based on start and limit.
+    """Fetches a list of PDB IDs based on start and limit parameters.
 
-    Parameters:
-        start: sequence start
-        limit: number of ids
-    Return:
-        list[str]
+    Args:
+        start: The starting index for pagination.
+        limit: The maximum number of IDs to fetch.
+
+    Returns:
+        List of PDB IDs if successful, None if the request fails.
     """
-
     url = get_search_url(start=start, limit=limit)
 
     response = get(url)
@@ -42,8 +48,14 @@ def fetch_ids(start: int, limit: int) -> list[str]:
 
 
 def get_latest_versions(ids: list[str]) -> dict:
-    """Returns dictionary of latest versions of each protein ID."""
+    """Returns dictionary of latest versions of each protein ID.
 
+    Args:
+        ids: List of PDB IDs to fetch versions for.
+
+    Returns:
+        Dictionary mapping PDB IDs to their latest version numbers.
+    """
     with cf.ThreadPoolExecutor(max_workers=WORKER_LIMIT) as executor:
         id_to_version = dict(zip(ids, executor.map(get_last_version, ids)))
 
@@ -51,8 +63,15 @@ def get_latest_versions(ids: list[str]) -> dict:
 
 
 def get_file_urls(ids: list[str], id_to_version: dict) -> dict:
-    """Returns url for fetching latest file for each protein ID."""
+    """Returns url for fetching latest file for each protein ID.
 
+    Args:
+        ids: List of PDB IDs.
+        id_to_version: Dictionary mapping PDB IDs to their versions.
+
+    Returns:
+        Dictionary mapping PDB IDs to their file URLs.
+    """
     file_urls = {}
     for id in ids:
         version = id_to_version[id]
@@ -62,7 +81,18 @@ def get_file_urls(ids: list[str], id_to_version: dict) -> dict:
 
 
 def fetch_files(file_urls: dict, id_to_version: dict) -> tuple:
-    """Fetches files from given urls and returns SQLModel objects for insertion, also returns ids that failed."""
+    """Fetches files from given urls and returns SQLModel objects for insertion.
+
+    Args:
+        file_urls: Dictionary mapping PDB IDs to their file URLs.
+        id_to_version: Dictionary mapping PDB IDs to their versions.
+
+    Returns:
+        A tuple containing:
+            - list[FileInsert]: List of file objects to insert
+            - list[ChangeInsert]: List of change objects to insert
+            - list[str]: List of failed PDB IDs
+    """
     with cf.ThreadPoolExecutor(max_workers=WORKER_LIMIT) as executor:
         id_to_data = dict(
             zip(file_urls.keys(), executor.map(get_file, file_urls.values()))
@@ -94,8 +124,12 @@ def fetch_files(file_urls: dict, id_to_version: dict) -> tuple:
 
 
 def insert_files(files: list[FileInsert], changes: list[ChangeInsert]) -> None:
-    """Inserts multiple new file entries at once."""
+    """Inserts multiple new file entries at once.
 
+    Args:
+        files: List of file objects to insert.
+        changes: List of change objects to insert.
+    """
     with db_context() as session:
         protein_service = ProteinService(session)
         file_service = FileService(session)
@@ -116,10 +150,9 @@ def fetch_all(start: int, total: int) -> None:
     Uses threads to speed up the fetching but requires explicit timeout after given batch,
     to avoid overwhelming PDB APIs.
 
-    Parameters:
-        total: total number of ids to work with
-    Returns:
-        None
+    Args:
+        start: The starting index for fetching.
+        total: Total number of IDs to process.
     """
     log.debug("Entry fetching stareted.")
 
@@ -169,8 +202,16 @@ def fetch_all(start: int, total: int) -> None:
 
 
 def get_linspace(total: int):
-    "Helper method to calculate step and starts for each worker."
+    """Helper method to calculate step and starts for each worker.
 
+    Args:
+        total: Total number of items to process.
+
+    Returns:
+        A tuple containing:
+            - Step size for each worker
+            - Generator of start indices for each worker
+    """
     step = int(ceil(total / WORKER_LIMIT))
     starts = (0 + i * step for i in range(WORKER_LIMIT))
 
@@ -181,7 +222,7 @@ def run(start: int | None):
     """Creates and starts child processes for fetching file data.
 
     Args:
-        start: starting id for fetching.
+        start: Starting index for fetching. If None, starts from 0.
     """
     log.info("Beggining fetch of all PDB entries.")
     ids_data = fetch_ids(start=0, limit=0)

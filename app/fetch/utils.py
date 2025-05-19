@@ -1,3 +1,9 @@
+"""Utility functions for PDB data fetching and processing.
+
+This module provides helper functions for interacting with the PDB API,
+including fetching files, managing versions, and handling API responses.
+"""
+
 from urllib.parse import quote_plus
 from arrow import utcnow
 from requests import Response, get
@@ -14,12 +20,26 @@ from app.config import (
 
 
 def get_full_id(id: str):
-    """Returns 12-character id of given 4-character id."""
+    """Returns 12-character id of given 4-character id.
+
+    Args:
+        id: The 4-character PDB ID.
+
+    Returns:
+        str: The 12-character full PDB ID.
+    """
     return f"pdb_0000{id.lower()}"
 
 
 def get_error_message(response: Response) -> str:
-    """Extracts error message if any given, otherwise returns plain text."""
+    """Extracts error message if any given, otherwise returns plain text.
+
+    Args:
+        response: The HTTP response object.
+
+    Returns:
+        The error message from the response, either as JSON or plain text.
+    """
     log.debug("Extractng error message.")
     try:
         message = response.json()
@@ -32,11 +52,12 @@ def get_error_message(response: Response) -> str:
 def get_file_url(id: str, version: str) -> str:
     """Create file url based on id and version.
 
-    Parameters:
-        id: structure id
-        version: version to fetch
+    Args:
+        id: The PDB structure ID.
+        version: The version number to fetch.
+
     Returns:
-        tuple of bytes and error code
+        The complete URL for the requested file.
     """
     log.debug(f"Creating url for file - {id=} {version=}.")
     id = id.lower()
@@ -49,7 +70,14 @@ def get_file_url(id: str, version: str) -> str:
 
 
 def get_graphql_query(id: str) -> str:
-    """Helper method to create url encoded string for Data API."""
+    """Helper method to create url encoded string for Data API.
+
+    Args:
+        id: The PDB structure ID.
+
+    Returns:
+        The URL-encoded GraphQL query string.
+    """
     log.debug(f"Generating GraphQL query string for id {id}")
 
     query = (
@@ -62,7 +90,15 @@ def get_graphql_query(id: str) -> str:
 
 
 def get_search_url(start: int = 0, limit: int = 1000) -> str:
-    """Helper method to create a url encoded string for Search API."""
+    """Helper method to create a url encoded string for Search API.
+
+    Args:
+        start: The starting index for pagination. Defaults to 0.
+        limit: The maximum number of results to return. Defaults to 1000.
+
+    Returns:
+        The URL-encoded search query string.
+    """
     log.debug(f"Creating search query string with these params: {start=}, {limit=}")
     params = {
         "query": {
@@ -85,7 +121,14 @@ def get_search_url(start: int = 0, limit: int = 1000) -> str:
 
 
 def get_last_version(id: str) -> int | None:
-    """Fetches latest version number of given file ID."""
+    """Fetches latest version number of given file ID.
+
+    Args:
+        id: The PDB structure ID.
+
+    Returns:
+        The latest version number if found, None otherwise.
+    """
     log.debug(f"Fetching latest version of a file with ID {id}.")
 
     url = get_graphql_query(id)
@@ -106,8 +149,14 @@ def get_last_version(id: str) -> int | None:
 
 
 def get_all_versions(id: str) -> set[int]:
-    """Fetches all versions of given structure, if any."""
+    """Fetches all versions of given structure, if any.
 
+    Args:
+        id: The PDB structure ID.
+
+    Returns:
+        Set of all version numbers if found, None otherwise.
+    """
     log.debug(f"Fetching all versions of file with ID {id}.")
 
     query = get_graphql_query(id)
@@ -132,10 +181,11 @@ def get_all_versions(id: str) -> set[int]:
 def fetch_files(urls: list[str]) -> list[bytes]:
     """Fetches files from given urls.
 
-    Parameters:
-        urls: list of urls
+    Args:
+        urls: List of URLs to fetch files from.
+
     Returns:
-        list of bytes
+        List of file contents as bytes.
     """
     log.debug(f"Fetching {len(urls)} files.")
     files = []
@@ -150,12 +200,13 @@ def fetch_files(urls: list[str]) -> list[bytes]:
 
 
 def get_file(url: list[str]) -> list[bytes]:
-    """Fetches files from given urls.
+    """Fetches files from given urls with retry logic.
 
-    Parameters:
-        urls: list of urls
+    Args:
+        url: List of URLs to fetch files from.
+
     Returns:
-        list of bytes
+        List of file contents as bytes.
     """
     log.debug(f"Fetching file from url: {url}")
     finished = False
@@ -177,13 +228,14 @@ def get_file(url: list[str]) -> list[bytes]:
 def fetch_file_at_version(id: str, version: str) -> tuple:
     """Fetches file with given id at given version.
 
-    Parameters:
-        id: 12-character structure id
-        version: version to fetch
-    Returns:
-        tuple of bytes and error code
-    """
+    Args:
+        id: The 12-character structure ID.
+        version: The version number to fetch.
 
+    Returns:
+        A tuple containing (file_content, error_code) where file_content is bytes
+            and error_code is None if successful, or (None, error_code) if failed.
+    """
     category = id[1:3].lower()
     file_name = f"{id}_xyz_v{version}.cif.gz"
     url = f"{PDB_HTTP_FILE_URL}{category}/{id}/{file_name}"
@@ -196,7 +248,15 @@ def fetch_file_at_version(id: str, version: str) -> tuple:
 
 
 def get_list_file(from_date: str, file_name: str) -> list[str]:
-    """Fetches file with new, updated or removed entries."""
+    """Fetches file with new, updated or removed entries.
+
+    Args:
+        from_date: The date to fetch entries from.
+        file_name: The type of entries to fetch ('added', 'modified', or 'obsolete').
+
+    Returns:
+        List of PDB IDs from the requested file.
+    """
     log.debug(f"Trying to fetch file with '{file_name}' entries.")
     url = f"{PDB_FTP_STATUS_URL}{from_date}/{file_name}.pdb"
     response = get(url)
@@ -210,7 +270,11 @@ def get_list_file(from_date: str, file_name: str) -> list[str]:
 
 
 def get_last_date():
-    """Gets last date when files were updated (currently Friday)."""
+    """Gets last date when files were updated (currently Friday).
+
+    Returns:
+        The date string in YYYYMMDD format.
+    """
     today = utcnow()
     last_date = today.shift(weeks=-1, weekday=5).format("YYYYMMDD")
     return last_date

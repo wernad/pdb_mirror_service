@@ -1,3 +1,9 @@
+"""Main application module for the PDB Mirror API.
+
+This module initializes and configures the FastAPI application, sets up database connections,
+and manages the application lifecycle including startup and shutdown events.
+"""
+
 from contextlib import asynccontextmanager
 
 from psycopg2 import OperationalError
@@ -16,6 +22,20 @@ router.include_router(api_router, prefix=API_PATH)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """Manages the application lifecycle events.
+
+    This function handles startup and shutdown events for the FastAPI application.
+    It initializes the database, creates necessary tables, and manages the scheduler.
+
+    Args:
+        app: The FastAPI application instance.
+
+    Returns:
+        None: This is an async context manager that returns control back to the application.
+
+    Raises:
+        OperationalError: If there's an error creating database tables.
+    """
     try:
         create_db_and_tables()
         init_flag_data()

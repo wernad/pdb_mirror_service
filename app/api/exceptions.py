@@ -1,8 +1,20 @@
+"""Custom exception classes for the PDB Mirror API.
+
+This module defines custom HTTP exceptions for handling various error cases
+in the API, including file not found, invalid ID formats, and API errors.
+"""
+
 from datetime import datetime
 from fastapi import HTTPException
 
 
 class FileNotFound(HTTPException):
+    """Exception raised when a requested protein file is not found.
+
+    Args:
+        protein_id: The ID of the protein that was not found.
+    """
+
     def __init__(self, protein_id: str):
         self.status_code = 404
         self.detail = f"File entry for protein '{protein_id}' not found."
@@ -11,7 +23,9 @@ class FileNotFound(HTTPException):
 class FileVersionNotFound(HTTPException):
     def __init__(self, protein_id: str, version: int):
         self.status_code = 404
-        self.detail = f"File entry for protein '{protein_id}' at version {version} not found."
+        self.detail = (
+            f"File entry for protein '{protein_id}' at version {version} not found."
+        )
 
 
 class UnsupportedIDFormat(HTTPException):

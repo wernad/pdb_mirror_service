@@ -1,3 +1,9 @@
+"""Repository module for managing failed fetch records in the database.
+
+This module provides a repository class for handling database operations related to
+failed fetch attempts, including tracking and retrieval of failed operations.
+"""
+
 from datetime import datetime
 from sqlmodel import select
 
@@ -7,17 +13,34 @@ from app.database.models import FailedFetch
 
 
 class FailedFetchRepository(RepositoryBase):
-    """Repository for DB operations related to failed fetches."""
+    """Repository for managing failed fetch records in the database.
+
+    This class provides methods for tracking and retrieving information about
+    failed fetch operations, helping with error tracking and retry management.
+    """
 
     def get_all_failed_fetches(self) -> list[FailedFetch]:
+        """Retrieves all failed fetch records from the database.
+
+        Returns:
+            List of all failed fetch records.
+        """
         statement = select(FailedFetch)
         files = self.db.exec(statement).all()
 
         return files
 
     def insert_new_failed_fetch(self, protein_id: str, version: int, error: str):
-        """Inserts new file version of given protein id."""
+        """Inserts a new failed fetch record.
 
+        Args:
+            protein_id: The ID of the protein that failed to fetch.
+            version: The version number that failed to fetch.
+            error: The error message describing the failure.
+
+        Returns:
+            True if insertion was successful, False otherwise.
+        """
         try:
             new_file = FailedFetch(
                 fetch_date=datetime.now(),
