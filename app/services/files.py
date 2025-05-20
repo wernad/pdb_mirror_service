@@ -62,7 +62,7 @@ class FileService:
         """
         data: File = self.file_repository.get_latest_version_by_protein_id(protein_id)
 
-        if data:
+        if data is not None:
             return data.version
 
         return None

@@ -114,7 +114,7 @@ async def get_latest_cif_prior(
     name="New IDs after date",
     description="Returns IDs of entries with new files after given date.",
 )
-async def get_new_cif_files(file_service: ProteinServiceDep, date: dt):
+async def get_new_cif_files(protein_service: ProteinServiceDep, date: dt):
     """Returns IDs of entries with new files after given date.
 
     Args:
@@ -124,7 +124,7 @@ async def get_new_cif_files(file_service: ProteinServiceDep, date: dt):
         List of PDB IDs with new files after the given date.
     """
     log.info(f"Received request for new cif files after given date {date}")
-    files = file_service.get_protein_ids_after_date(date)
+    files = protein_service.get_protein_ids_after_date(date)
 
     if not files:
         raise NoFilesAfterDate(date=date)
