@@ -1,0 +1,23 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: be-mirror-ingress
+  annotations:
+    kubernetes.io/tls-acme: "true"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - "mirror-api.dyn.cloud.e-infra.cz"
+      secretName: mirror-api-dyn-cloud-e-infra-cz-tls
+  rules:
+  - host: "mirror-api.dyn.cloud.e-infra.cz"
+    http:
+      paths:
+      - backend:
+          service:
+            name: be-mirror
+            port:
+              number: 8000
+        pathType: ImplementationSpecific
