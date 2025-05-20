@@ -8,9 +8,7 @@ from unittest.mock import Mock, patch
 from app.main import app
 from app.api.dependencies import get_file_service, get_protein_service
 
-client = TestClient(
-    app, base_url="http://testserver/api/v1/files", raise_server_exceptions=False
-)
+client = TestClient(app, base_url="http://testserver/api/v1/files")
 
 # Mock data
 MOCK_PROTEIN_ID = "1abc"
@@ -55,6 +53,11 @@ def test_ping():
 def test_get_latest_cif_success(mock_file_service):
     """Test successful retrieval of latest CIF file."""
     mock_file_service.get_latest_by_protein_id.return_value = MOCK_BINARY_FILE_CONTENT
+
+    def get_file_service_override():
+        return mock_file_service
+
+    app.dependency_overrides[get_file_service] = get_file_service_override
 
     response = client.get(f"/{MOCK_PROTEIN_ID}/latest")
     assert response.status_code == 200
@@ -149,9 +152,14 @@ def test_get_new_cif_files_success(mock_protein_service):
     assert response.json() == mock_ids
 
 
-# def test_get_new_cif_files_not_found(mock_protein_service):
-#     """Test getting new CIF files when none exist after date."""
-#     mock_protein_service.get_protein_ids_after_date.return_value = []
+def test_get_new_cif_files_not_found(mock_protein_service):
+    """Test getting new CIF files when none exist after date."""
+    mock_protein_service.get_protein_ids_after_date.return_value = []
 
-#     response = client.get(f"/date/{MOCK_DATE.isoformat()}")
-#     assert response.status_code == 404
+    def get_protein_service_override():
+        return mock_protein_service
+
+    app.dependency_overrides[get_protein_service] = get_protein_service_override
+
+    response = client.get(f"/date/{MOCK_DATE.isoformat()}")
+    assert response.status_code == 404
