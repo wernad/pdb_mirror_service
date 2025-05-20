@@ -128,3 +128,5 @@ async def get_new_cif_files(protein_service: ProteinServiceDep, date: dt):
 
     if not files:
         raise NoFilesAfterDate(date=date)
+
+    return files
