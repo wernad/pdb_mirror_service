@@ -1,0 +1,1 @@
+"""Endpoints tests package."""
