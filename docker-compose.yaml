@@ -35,7 +35,7 @@ services:
     ports:
       - "8000:8000"
     healthcheck:
-      test: ["CMD", "curl", "-f", "172.21.0.1:8000/api/v1/files/ping"]
+      test: ["CMD", "curl", "-f", "localhost:8000/api/v1/files/ping"]
       interval: 5s
       timeout: 5s
       retries: 5
